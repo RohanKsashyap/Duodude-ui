@@ -19,8 +19,8 @@ interface Product {
   description: string;
   price: number;
   rating?: number;
-  images: string | string[]; // ✅ Accept both string and array
-  sizes?: string[];
+  images: string | string[];
+  sizes?: string[] | string;
 }
 
 const ProductDetailPage: React.FC = () => {
@@ -35,6 +35,8 @@ const ProductDetailPage: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState('M');
   const [isWishlisted, setIsWishlisted] = useState(false);
 
+  const fallbackSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
   useEffect(() => {
     async function fetchProduct() {
       if (!id) return;
@@ -44,8 +46,16 @@ const ProductDetailPage: React.FC = () => {
         const response = await fetch(`${baseurl}/api/products/${id}`);
         if (!response.ok) throw new Error('Failed to fetch product');
         const data: Product = await response.json();
+
+        // Normalize sizes for selection
+        const normalizedSizes = Array.isArray(data.sizes)
+          ? data.sizes
+          : typeof data.sizes === 'string'
+          ? [data.sizes]
+          : fallbackSizes;
+
         setProduct(data);
-        setSelectedSize(data.sizes?.[0] || 'M');
+        setSelectedSize(normalizedSizes[0] || 'M');
       } catch (err: any) {
         setError(err.message || 'Something went wrong');
       } finally {
@@ -63,8 +73,6 @@ const ProductDetailPage: React.FC = () => {
       addToCart(product, quantity, selectedSize);
     }
   };
-
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
   if (loading) {
     return (
@@ -107,10 +115,15 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  // ✅ Normalize images to an array
   const images = Array.isArray(product.images)
     ? product.images
     : [product.images];
+
+  const availableSizes = Array.isArray(product.sizes)
+    ? product.sizes
+    : typeof product.sizes === 'string'
+    ? [product.sizes]
+    : fallbackSizes;
 
   return (
     <div className="min-h-screen bg-white">
@@ -120,7 +133,7 @@ const ProductDetailPage: React.FC = () => {
           <div className="space-y-4">
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
-                src={images[0]}
+                src={product.image}
                 alt={product.name}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
@@ -132,7 +145,7 @@ const ProductDetailPage: React.FC = () => {
                   className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                 >
                   <img
-                    src={img}
+                    src={product.image}
                     alt={`${product.name} view ${index + 1}`}
                     className="w-full h-full object-cover hover:opacity-80 transition-opacity"
                   />
@@ -178,7 +191,7 @@ const ProductDetailPage: React.FC = () => {
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-3">Size</h3>
               <div className="grid grid-cols-6 gap-2">
-                {(product.sizes || sizes).map((size) => (
+                {availableSizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}

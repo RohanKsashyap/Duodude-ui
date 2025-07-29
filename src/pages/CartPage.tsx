@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Product } from '../types';
+import { baseurl } from './ProductsPage';
 
 interface CartItem {
   product: Product;
@@ -17,7 +18,7 @@ const CartPage: React.FC = () => {
   const fetchCart = () => {
     setLoading(true);
     setError(null);
-    fetch('/api/cart')
+    fetch(`${baseurl}/api/cart`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load cart');
         return res.json();
