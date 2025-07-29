@@ -7,11 +7,13 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  isAuthenticated: boolean;
+  token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users data (in a real app, this would be handled by a backend)
+// Mock users data (replace with backend API later)
 const mockUsers: (User & { password: string })[] = [
   {
     id: 1,
@@ -33,51 +35,61 @@ const mockUsers: (User & { password: string })[] = [
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for saved user in localStorage
     const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('token');
+
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
+
+    if (savedToken) {
+      setToken(savedToken);
+    }
+
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call delay
+
+    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-    
+
     if (foundUser) {
       const { password: _, ...userWithoutPassword } = foundUser;
       setUser(userWithoutPassword);
+
+      const fakeToken = `mock-token-${userWithoutPassword.id}`;
+      setToken(fakeToken);
+
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      localStorage.setItem('token', fakeToken);
+
       setIsLoading(false);
       return true;
     }
-    
+
     setIsLoading(false);
     return false;
   };
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call delay
+
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user already exists
+
     const existingUser = mockUsers.find(u => u.email === email);
     if (existingUser) {
       setIsLoading(false);
       return false;
     }
-    
-    // Create new user
+
     const newUser: User & { password: string } = {
       id: mockUsers.length + 1,
       email,
@@ -86,23 +98,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: 'user',
       createdAt: new Date().toISOString()
     };
-    
+
     mockUsers.push(newUser);
-    
+
     const { password: _, ...userWithoutPassword } = newUser;
     setUser(userWithoutPassword);
+
+    const fakeToken = `mock-token-${userWithoutPassword.id}`;
+    setToken(fakeToken);
+
     localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+    localStorage.setItem('token', fakeToken);
+
     setIsLoading(false);
     return true;
   };
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        signup,
+        logout,
+        isLoading,
+        isAuthenticated: !!user,
+        token
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

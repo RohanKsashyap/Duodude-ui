@@ -15,70 +15,87 @@ const CartPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch cart data from the backend
   const fetchCart = () => {
     setLoading(true);
     setError(null);
-    fetch(`${baseurl}/api/cart`)
-      .then(res => {
+
+    // Fetch cart data from the backend API
+    fetch(`${baseurl}/api/cart`, {
+      credentials: 'include', // important if you're using cookies for authentication
+    })
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to load cart');
         return res.json();
       })
-      .then((data: CartItem[]) => {
-        setCartItems(data);
+      .then((data: { items: CartItem[] }) => {
+        setCartItems(data.items); // Update the cart items state
       })
-      .catch(err => {
-        setError(err.message);
+      .catch((err) => {
+        console.error('Cart fetch error:', err);
+        setError(err.message); // Set error state in case of failure
       })
-      .finally(() => setLoading(false));
+      .finally(() => setLoading(false)); // Stop loading state
   };
 
+  // Run fetchCart once the component mounts
   useEffect(() => {
     fetchCart();
   }, []);
 
+  // Update item quantity in the cart
   const updateQuantity = (productId: string, qty: number) => {
     if (qty < 1) return;
+
     fetch(`/api/cart/${productId}/quantity`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quantity: qty }),
     })
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to update quantity');
         return res.json();
       })
-      .then(fetchCart)
-      .catch(err => setError(err.message));
+      .then(fetchCart) // Re-fetch cart after successful update
+      .catch((err) => setError(err.message)); // Handle error
   };
 
+  // Remove an item from the cart
   const removeFromCart = (productId: string) => {
     fetch(`/api/cart/${productId}`, { method: 'DELETE' })
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to remove item');
         return res.json();
       })
-      .then(fetchCart)
-      .catch(err => setError(err.message));
+      .then(fetchCart) // Re-fetch cart after successful removal
+      .catch((err) => setError(err.message)); // Handle error
   };
 
+  // Clear the entire cart
   const clearCart = () => {
     fetch('/api/cart', { method: 'DELETE' })
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to clear cart');
         return res.json();
       })
-      .then(fetchCart)
-      .catch(err => setError(err.message));
+      .then(fetchCart) // Re-fetch cart after clearing
+      .catch((err) => setError(err.message)); // Handle error
   };
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shipping = subtotal > 100 ? 0 : 10;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  // Calculate the total price (with tax and shipping)
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
+  const shipping = subtotal > 100 ? 0 : 10; // Free shipping if over $100
+  const tax = subtotal * 0.08; // 8% tax
+  const total = subtotal + shipping + tax; // Total price
 
+  // Display loading or error states
   if (loading) return <div className="text-center py-12">Loading cart…</div>;
   if (error) return <div className="text-center py-12 text-red-500">Error: {error}</div>;
 
+  // If the cart is empty
   if (cartItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
@@ -101,7 +118,7 @@ const CartPage: React.FC = () => {
         <div className="mt-12 lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start xl:gap-x-16">
           <div className="lg:col-span-7">
             <ul role="list" className="border-t border-b divide-y divide-gray-200">
-              {cartItems.map(item => (
+              {cartItems.map((item) => (
                 <li key={`${item.product._id}-${item.size ?? ''}`} className="flex py-6 sm:py-10">
                   <div className="flex-shrink-0">
                     <img
