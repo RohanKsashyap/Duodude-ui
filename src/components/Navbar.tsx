@@ -137,6 +137,13 @@ const Navbar: React.FC = () => {
             >
               About
             </Link>
+            <Link 
+              to="/contact" 
+              className="text-gray-700 hover:text-gray-900 block px-3 py-2 text-base font-medium"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Contact
+            </Link>
           </div>
         </div>
       )}
