@@ -27,8 +27,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 🔁 Load cart from server or localStorage
   useEffect(() => {
     const loadCart = async () => {
-      if (isAuthenticated) {
+      if (isAuthenticated && token) {
         try {
+          console.log('Loading cart from server for authenticated user...');
           const res = await api.get('/api/cart');
           if (Array.isArray(res.data.items)) {
             setCartItems(
@@ -41,16 +42,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             setCartItems([]);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error('Error loading cart from DB:', err);
+          
+          // If authentication fails, fall back to local storage
+          if (err.response?.status === 401) {
+            console.log('Authentication failed, falling back to local storage');
+            const local = localStorage.getItem('cart');
+            setCartItems(local ? JSON.parse(local) : []);
+          } else {
+            console.error('Cart fetch error:', new Error('Failed to load cart'));
+          }
         }
       } else {
+        console.log('Loading cart from local storage...');
         const local = localStorage.getItem('cart');
         setCartItems(local ? JSON.parse(local) : []);
       }
     };
     loadCart();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   // 🔁 Persist to localStorage (only for guest)
   useEffect(() => {
