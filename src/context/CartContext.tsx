@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
 import { useAuth } from './AuthContext'; // You must have this
 import axios from 'axios';
+import { baseurl } from '../pages/ProductsPage';
 
 interface CartItem {
   product: Product;
@@ -29,16 +30,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadCart = async () => {
       if (isAuthenticated) {
         try {
-          const res = await axios.get('/api/cart', {
+          const res = await axios.get(`${baseurl}/api/cart`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          setCartItems(
-            res.data.items.map((item: any) => ({
-              product: item.product,
-              quantity: item.quantity,
-              size: item.size,
-            }))
-          );
+          if (Array.isArray(res.data.items)) {
+            setCartItems(
+              res.data.items.map((item: any) => ({
+                product: item.product,
+                quantity: item.quantity,
+                size: item.size,
+              }))
+            );
+          } else {
+            setCartItems([]);
+          }
         } catch (err) {
           console.error('Error loading cart from DB:', err);
         }
@@ -66,7 +71,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       for (const item of localItems) {
         await axios.post(
-          '/api/cart/add',
+          `${baseurl}/api/cart/add`,
           {
             productId: item.product._id || item.product.id,
             quantity: item.quantity,
@@ -90,7 +95,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isAuthenticated) {
       try {
         await axios.post(
-          '/api/cart/add',
+          `${baseurl}/api/cart/add`,
           {
             productId: product._id || product.id,
             quantity,
@@ -101,7 +106,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         );
         // Refresh cart
-        const res = await axios.get('/api/cart', {
+        const res = await axios.get(`${baseurl}/api/cart`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCartItems(
@@ -148,7 +153,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCartItems([]);
     if (isAuthenticated) {
       try {
-        await axios.delete('/api/cart/clear', {
+        await axios.delete(`${baseurl}/api/cart/clear`, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } catch (err) {

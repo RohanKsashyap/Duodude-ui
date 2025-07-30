@@ -12,16 +12,8 @@ import {
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { baseurl } from './ProductsPage';
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  rating?: number;
-  images: string | string[];
-  sizes?: string[] | string;
-}
+import { Product, Review } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +26,12 @@ const ProductDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState('M');
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const { user, isAuthenticated } = useAuth();
+  const [reviewError, setReviewError] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const fallbackSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
@@ -65,12 +63,52 @@ const ProductDetailPage: React.FC = () => {
     fetchProduct();
   }, [id]);
 
+  // Fetch reviews
+  useEffect(() => {
+    if (!id) return;
+    fetch(`${baseurl}/api/reviews/product/${id}`)
+      .then(res => res.json())
+      .then(setReviews)
+      .catch(() => setReviews([]));
+  }, [id]);
+
   const incrementQuantity = () => setQuantity((q) => q + 1);
   const decrementQuantity = () => setQuantity((q) => Math.max(1, q - 1));
 
   const handleAddToCart = () => {
     if (product) {
       addToCart(product, quantity, selectedSize);
+    }
+  };
+
+  // Review submit handler
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewLoading(true);
+    setReviewError('');
+    try {
+      const res = await fetch(`${baseurl}/api/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ productId: id, rating: reviewRating, comment: reviewComment })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to submit review');
+      }
+      setReviewComment('');
+      setReviewRating(5);
+      // Refresh reviews
+      fetch(`${baseurl}/api/reviews/product/${id}`)
+        .then(res => res.json())
+        .then(setReviews);
+    } catch (err: any) {
+      setReviewError(err.message);
+    } finally {
+      setReviewLoading(false);
     }
   };
 
@@ -265,6 +303,46 @@ const ProductDetailPage: React.FC = () => {
                   <span className="text-sm text-gray-600">2-year warranty included</span>
                 </div>
               </div>
+            </div>
+
+            {/* Reviews Section */}
+            <div className="mt-8">
+              <h2 className="text-xl font-semibold mb-2">Reviews</h2>
+              {reviews.length === 0 && <p>No reviews yet.</p>}
+              <ul className="mb-4">
+                {reviews.map(r => (
+                  <li key={r._id} className="mb-2 border-b pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{typeof r.user === 'object' ? r.user.name : 'User'}</span>
+                      <span className="text-yellow-500">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                    </div>
+                    {r.comment && <div className="text-gray-700">{r.comment}</div>}
+                    <div className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleString()}</div>
+                  </li>
+                ))}
+              </ul>
+              {isAuthenticated && (
+                <form onSubmit={handleReviewSubmit} className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <label>Rating:</label>
+                    <select value={reviewRating} onChange={e => setReviewRating(Number(e.target.value))} className="border rounded px-2 py-1">
+                      {[5,4,3,2,1].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <textarea
+                    value={reviewComment}
+                    onChange={e => setReviewComment(e.target.value)}
+                    placeholder="Write your review..."
+                    className="w-full border rounded px-2 py-1 mb-2"
+                    rows={2}
+                  />
+                  <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded" disabled={reviewLoading}>
+                    {reviewLoading ? 'Submitting...' : 'Submit Review'}
+                  </button>
+                  {reviewError && <div className="text-red-500 mt-1">{reviewError}</div>}
+                </form>
+              )}
+              {!isAuthenticated && <p className="text-gray-500">Log in to write a review.</p>}
             </div>
           </div>
         </div>

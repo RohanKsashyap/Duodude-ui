@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { baseurl } from './ProductsPage';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,6 +14,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
+  const { setUser, setToken, getRedirectPath } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +28,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch(`${baseurl}/api/auth/signin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,10 +41,12 @@ const LoginPage: React.FC = () => {
         throw new Error(errorData.message || 'Invalid email or password');
       }
 
-      // Assuming your API returns user info or token here:
-      // You might want to save token to localStorage or context here
-
-      navigate(from, { replace: true });
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data));
+      setUser(data);
+      setToken(data.token);
+      navigate(getRedirectPath(data), { replace: true });
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
     } finally {

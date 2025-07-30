@@ -7,26 +7,32 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products'>('overview');
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<any>(null);
   const { token, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!token || !user?.isAdmin) {
+      if (!token || user?.role !== 'admin') {
         return navigate('/');
       }
 
       try {
-        const [ordersRes, usersRes] = await Promise.all([
+        const [ordersRes, usersRes, productsRes, analyticsRes] = await Promise.all([
           axios.get('/api/orders', { headers: { Authorization: `Bearer ${token}` } }),
           axios.get('/api/users', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/products', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/orders/analytics', { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         setOrders(ordersRes.data);
         setUsers(usersRes.data);
+        setProducts(productsRes.data);
+        setAnalytics(analyticsRes.data);
       } catch (err) {
         console.error('Failed to load dashboard:', err);
       } finally {
@@ -37,7 +43,7 @@ const AdminDashboard: React.FC = () => {
     fetchDashboardData();
   }, [token, user, navigate]);
 
-  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
+  const totalRevenue = Array.isArray(orders) ? orders.reduce((acc, order) => acc + order.total, 0) : 0;
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -68,6 +74,7 @@ const AdminDashboard: React.FC = () => {
               { id: 'overview', name: 'Overview', icon: TrendingUp },
               { id: 'orders', name: 'Orders', icon: ShoppingBag },
               { id: 'users', name: 'Users', icon: Users },
+              { id: 'products', name: 'Products', icon: ShoppingBag },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -89,25 +96,298 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'overview' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard label="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} icon={TrendingUp} bg="green" />
-              <StatCard label="Total Orders" value={orders.length} icon={ShoppingBag} bg="blue" />
-              <StatCard label="Total Users" value={users.length} icon={Users} bg="purple" />
+              <div className="bg-green-100 p-4 rounded">
+                <div className="text-lg font-bold">Total Revenue</div>
+                <div className="text-2xl">${analytics?.totalSales?.toFixed(2) ?? totalRevenue.toFixed(2)}</div>
+              </div>
+              <div className="bg-blue-100 p-4 rounded">
+                <div className="text-lg font-bold">Total Orders</div>
+                <div className="text-2xl">{analytics?.totalOrders ?? (Array.isArray(orders) ? orders.length : 0)}</div>
+              </div>
+              <div className="bg-purple-100 p-4 rounded">
+                <div className="text-lg font-bold">Total Users</div>
+                <div className="text-2xl">{analytics?.totalUsers ?? users.length}</div>
+              </div>
             </div>
-
-            <RecentOrdersTable orders={orders.slice(0, 5)} formatDate={formatDate} getStatusColor={getStatusColor} />
+            <div>
+              <h3 className="font-bold mb-2">Sales by Month</h3>
+              <div className="bg-white p-4 rounded shadow">
+                {analytics?.salesByMonth?.length ? (
+                  <ul className="space-y-1">
+                    {analytics.salesByMonth.map((m: any) => (
+                      <li key={m._id} className="flex justify-between">
+                        <span>{m._id}</span>
+                        <span>${m.total.toFixed(2)} ({m.count} orders)</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No sales data available.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <h3 className="font-bold mb-2">Recent Orders</h3>
+              {Array.isArray(orders) && <OrderTable orders={orders.slice(0, 5)} setOrders={setOrders} token={token} adminMode={false} />}
+            </div>
           </div>
         )}
 
         {/* Orders Tab */}
-        {activeTab === 'orders' && (
-          <OrderTable orders={orders} formatDate={formatDate} getStatusColor={getStatusColor} />
-        )}
+        {activeTab === 'orders' && Array.isArray(orders) && <OrderTable orders={orders} setOrders={setOrders} token={token} adminMode={true} />}
 
         {/* Users Tab */}
-        {activeTab === 'users' && <UsersTable users={users} formatDate={formatDate} />}
+        {activeTab === 'users' && Array.isArray(users) && <UsersTable users={users} setUsers={setUsers} token={token} />}
+
+        {/* Products Tab */}
+        {activeTab === 'products' && Array.isArray(products) && <ProductTable products={products} setProducts={setProducts} token={token} />}
       </div>
     </div>
   );
 };
 
 export default AdminDashboard;
+
+// Inline OrderTable component
+const OrderTable: React.FC<{ orders: any[]; setOrders: (o: any[]) => void; token: string; adminMode: boolean }> = ({ orders, setOrders, token, adminMode }) => {
+  const [editingId, setEditingId] = useState<string>('');
+  const [editStatus, setEditStatus] = useState('');
+  const handleEdit = (order: any) => {
+    setEditingId(order._id);
+    setEditStatus(order.status);
+  };
+  const handleEditSave = async () => {
+    await axios.put(`/api/orders/${editingId}/status`, { status: editStatus }, { headers: { Authorization: `Bearer ${token}` } });
+    setOrders(orders.map(o => (o._id === editingId ? { ...o, status: editStatus } : o)));
+    setEditingId('');
+  };
+  const handleDelete = async (id: string) => {
+    await axios.delete(`/api/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    setOrders(orders.filter(o => o._id !== id));
+  };
+  return (
+    <table className="min-w-full bg-white border mt-4">
+      <thead>
+        <tr>
+          <th className="px-4 py-2 border">Order ID</th>
+          <th className="px-4 py-2 border">User</th>
+          <th className="px-4 py-2 border">Total</th>
+          <th className="px-4 py-2 border">Status</th>
+          <th className="px-4 py-2 border">Date</th>
+          {adminMode && <th className="px-4 py-2 border">Actions</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {orders.map(order => (
+          <tr key={order._id}>
+            <td className="border px-4 py-2">{order._id}</td>
+            <td className="border px-4 py-2">{order.user?.name || 'N/A'}</td>
+            <td className="border px-4 py-2">${order.total?.toFixed(2)}</td>
+            <td className="border px-4 py-2">
+              {editingId === order._id ? (
+                <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="border px-2 py-1">
+                  {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              ) : (
+                order.status
+              )}
+            </td>
+            <td className="border px-4 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
+            {adminMode && (
+              <td className="border px-4 py-2">
+                {editingId === order._id ? (
+                  <>
+                    <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
+                    <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => handleEdit(order)} className="text-blue-600 mr-2">Edit</button>
+                    <button onClick={() => handleDelete(order._id)} className="text-red-600">Delete</button>
+                  </>
+                )}
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+// Inline UsersTable component
+const UsersTable: React.FC<{ users: any[]; setUsers: (u: any[]) => void; token: string }> = ({ users, setUsers, token }) => {
+  if (!Array.isArray(users)) return <div>No users data.</div>;
+  const [editingId, setEditingId] = useState<string>('');
+  const [editRole, setEditRole] = useState('user');
+  const handleEdit = (user: any) => {
+    setEditingId(user._id);
+    setEditRole(user.role);
+  };
+  const handleEditSave = async () => {
+    await axios.put(`/api/users/${editingId}`, { role: editRole }, { headers: { Authorization: `Bearer ${token}` } });
+    setUsers(users.map(u => (u._id === editingId ? { ...u, role: editRole } : u)));
+    setEditingId('');
+  };
+  const handleDelete = async (id: string) => {
+    await axios.delete(`/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    setUsers(users.filter(u => u._id !== id));
+  };
+  return (
+    <table className="min-w-full bg-white border mt-4">
+      <thead>
+        <tr>
+          <th className="px-4 py-2 border">Name</th>
+          <th className="px-4 py-2 border">Email</th>
+          <th className="px-4 py-2 border">Role</th>
+          <th className="px-4 py-2 border">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {users.map(user => (
+          <tr key={user._id}>
+            <td className="border px-4 py-2">{user.name}</td>
+            <td className="border px-4 py-2">{user.email}</td>
+            <td className="border px-4 py-2">
+              {editingId === user._id ? (
+                <select value={editRole} onChange={e => setEditRole(e.target.value)} className="border px-2 py-1">
+                  {['user', 'admin'].map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              ) : (
+                user.role
+              )}
+            </td>
+            <td className="border px-4 py-2">
+              {editingId === user._id ? (
+                <>
+                  <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
+                  <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => handleEdit(user)} className="text-blue-600 mr-2">Edit</button>
+                  <button onClick={() => handleDelete(user._id)} className="text-red-600">Delete</button>
+                </>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+// ProductTable component
+const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void; token: string }> = ({ products, setProducts, token }) => {
+  if (!Array.isArray(products)) return <div>No products data.</div>;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [newProduct, setNewProduct] = useState<any>({ name: '', price: '', stock: '', category: '', description: '' });
+  const handleEdit = (product: any) => {
+    setEditingId(product._id);
+    setEditForm(product);
+  };
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+  const handleEditSave = async () => {
+    await axios.put(`/api/products/${editingId}`, editForm, { headers: { Authorization: `Bearer ${token}` } });
+    setProducts(products.map(p => (p._id === editingId ? { ...p, ...editForm } : p)));
+    setEditingId(null);
+  };
+  const handleDelete = async (id: string) => {
+    await axios.delete(`/api/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    setProducts(products.filter(p => p._id !== id));
+  };
+  const handleNewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewProduct({ ...newProduct, [e.target.name]: e.target.value });
+  };
+  const handleAdd = async () => {
+    const res = await axios.post('/api/products', newProduct, { headers: { Authorization: `Bearer ${token}` } });
+    setProducts([...products, res.data]);
+    setNewProduct({ name: '', price: '', stock: '', category: '', description: '' });
+  };
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4">Products</h2>
+      <table className="min-w-full bg-white border">
+        <thead>
+          <tr>
+            <th className="px-4 py-2 border">Name</th>
+            <th className="px-4 py-2 border">Price</th>
+            <th className="px-4 py-2 border">Stock</th>
+            <th className="px-4 py-2 border">Category</th>
+            <th className="px-4 py-2 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map(product => (
+            <tr key={product._id}>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <input name="name" value={editForm.name} onChange={handleEditChange} className="border px-2 py-1" />
+                ) : (
+                  product.name
+                )}
+              </td>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <input name="price" value={editForm.price} onChange={handleEditChange} className="border px-2 py-1" />
+                ) : (
+                  product.price
+                )}
+              </td>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <input name="stock" value={editForm.stock} onChange={handleEditChange} className="border px-2 py-1" />
+                ) : (
+                  product.stock
+                )}
+              </td>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <input name="category" value={editForm.category} onChange={handleEditChange} className="border px-2 py-1" />
+                ) : (
+                  product.category
+                )}
+              </td>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <>
+                    <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
+                    <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => handleEdit(product)} className="text-blue-600 mr-2">Edit</button>
+                    <button onClick={() => handleDelete(product._id)} className="text-red-600">Delete</button>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+          <tr>
+            <td className="border px-4 py-2">
+              <input name="name" value={newProduct.name} onChange={handleNewChange} className="border px-2 py-1" placeholder="Name" />
+            </td>
+            <td className="border px-4 py-2">
+              <input name="price" value={newProduct.price} onChange={handleNewChange} className="border px-2 py-1" placeholder="Price" />
+            </td>
+            <td className="border px-4 py-2">
+              <input name="stock" value={newProduct.stock} onChange={handleNewChange} className="border px-2 py-1" placeholder="Stock" />
+            </td>
+            <td className="border px-4 py-2">
+              <input name="category" value={newProduct.category} onChange={handleNewChange} className="border px-2 py-1" placeholder="Category" />
+            </td>
+            <td className="border px-4 py-2">
+              <button onClick={handleAdd} className="text-green-600">Add</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};

@@ -13,6 +13,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import ContactPage from './pages/ContactPage';
+import ProfilePage from './pages/ProfilePage';
+import CheckoutPage from './pages/CheckoutPage';
 
 function App() {
   return (
@@ -32,6 +34,14 @@ function App() {
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
                   path="/admin" 
                   element={
                     <ProtectedRoute requireAdmin={true}>
@@ -39,6 +49,7 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
+                <Route path="/checkout" element={<CheckoutPage />} />
               </Routes>
             </main>
             <Footer />

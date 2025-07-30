@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Product } from '../types';
 import { baseurl } from './ProductsPage';
@@ -15,14 +15,16 @@ const CartPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+
   // Fetch cart data from the backend
   const fetchCart = () => {
     setLoading(true);
     setError(null);
 
-    // Fetch cart data from the backend API
+    const token = localStorage.getItem('token');
     fetch(`${baseurl}/api/cart`, {
-      credentials: 'include', // important if you're using cookies for authentication
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load cart');
@@ -212,7 +214,7 @@ const CartPage: React.FC = () => {
                   <p className="text-base font-medium text-gray-900">${total.toFixed(2)}</p>
                 </div>
               </div>
-              <button type="button" className="mt-8 w-full bg-black text-white rounded-md py-3 hover:bg-gray-800">
+              <button type="button" className="mt-8 w-full bg-black text-white rounded-md py-3 hover:bg-gray-800" onClick={() => navigate('/checkout')}>
                 Checkout
               </button>
               <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over $100</p>

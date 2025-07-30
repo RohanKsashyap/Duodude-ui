@@ -18,45 +18,36 @@ const ProductsPage: React.FC = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Fetch products from backend on mount
+  // Fetch products from backend when filters/search/sort change
   useEffect(() => {
     setLoading(true);
     setError(null);
-
-    fetch(`${baseurl}/api/products`) // Replace with your actual backend endpoint
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
+    if (priceRange[0] > 0) params.append('minPrice', priceRange[0].toString());
+    if (priceRange[1] < 200) params.append('maxPrice', priceRange[1].toString());
+    if (sortBy) params.append('sortBy', sortBy);
+    if (sortOrder) params.append('sortOrder', sortOrder);
+    fetch(`${baseurl}/api/products?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch products');
         return res.json();
       })
       .then((data: Product[]) => {
         setAllProducts(data);
+        setFilteredProducts(data);
         setLoading(false);
       })
       .catch(err => {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
-
-  // Filter products whenever allProducts, selectedCategory or priceRange changes
-  useEffect(() => {
-    let result = [...allProducts];
-
-    // Filter by category if selected and not "all"
-    if (selectedCategory && selectedCategory !== 'all') {
-      if (selectedCategory === 'new') {
-        result = result.filter(product => product.new === true);
-      } else {
-        result = result.filter(product => product.category === selectedCategory);
-      }
-    }
-
-    // Filter by price range
-    result = result.filter(product => product.price >= priceRange[0] && product.price <= priceRange[1]);
-
-    setFilteredProducts(result);
-  }, [allProducts, selectedCategory, priceRange]);
+  }, [search, selectedCategory, priceRange, sortBy, sortOrder]);
 
   // Sync selectedCategory if URL param changes
   useEffect(() => {
@@ -90,14 +81,39 @@ const ProductsPage: React.FC = () => {
               ? 'All Products'
               : categories.find(c => c.id === selectedCategory)?.name || 'Products'}
           </h1>
-
-          <button
-            className="flex items-center text-sm font-medium text-gray-700 mt-4 md:mt-0"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter size={18} className="mr-2" />
-            Filters
-          </button>
+          <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0 items-center">
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="border px-3 py-1 rounded w-48"
+            />
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="border px-2 py-1 rounded"
+            >
+              <option value="createdAt">Newest</option>
+              <option value="price">Price</option>
+              <option value="rating">Rating</option>
+            </select>
+            <select
+              value={sortOrder}
+              onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
+              className="border px-2 py-1 rounded"
+            >
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+            <button
+              className="flex items-center text-sm font-medium text-gray-700"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter size={18} className="mr-2" />
+              Filters
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -159,7 +175,7 @@ const ProductsPage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 gap-x-6 lg:grid-cols-3 xl:gap-x-8">
                 {filteredProducts.map(product => (
-                  <ProductCard key={product._id ?? product.id} product={product} />
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             )}

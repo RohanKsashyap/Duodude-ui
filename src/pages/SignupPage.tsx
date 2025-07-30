@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { baseurl } from './ProductsPage';
 
 const SignupPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +16,7 @@ const SignupPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { setUser, setToken, getRedirectPath } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -44,7 +47,7 @@ const SignupPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/signup', {
+      const response = await fetch(`${baseurl}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -57,13 +60,16 @@ const SignupPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        // You can customize error message based on response status or body
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to create account');
       }
 
-      // Signup successful, redirect or do something else
-      navigate('/');
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data));
+      setUser(data);
+      setToken(data.token);
+      navigate(getRedirectPath(data));
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
