@@ -1,17 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from './ProductCard';
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  images: string[];
-  colors?: string[];
-  category?: string;
-  featured?: boolean;
-  // add other fields as needed
-}
+import api from '../config/axios';
+import { Product } from '../types';
 
 const FeaturedProducts: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
@@ -22,14 +13,10 @@ const FeaturedProducts: React.FC = () => {
     const fetchFeaturedProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/featured-products');
-        if (!response.ok) {
-          throw new Error('Failed to fetch featured products');
-        }
-        const data = await response.json();
-        setFeaturedProducts(data);
+        const response = await api.get('/api/products/featured');
+        setFeaturedProducts(response.data);
       } catch (err: any) {
-        setError(err.message || 'Something went wrong');
+        setError(err.response?.data?.message || err.message || 'Something went wrong');
       } finally {
         setLoading(false);
       }
@@ -66,7 +53,7 @@ const FeaturedProducts: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 gap-x-6 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
           {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product._id} product={product} />
           ))}
         </div>
       </div>

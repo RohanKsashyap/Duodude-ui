@@ -153,9 +153,11 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const images = Array.isArray(product.images)
+  const images = Array.isArray(product.images) && product.images.length > 0
     ? product.images
-    : [product.images];
+    : (product as any).image
+    ? [(product as any).image]
+    : ['https://via.placeholder.com/400x400?text=No+Image'];
 
   const availableSizes = Array.isArray(product.sizes)
     ? product.sizes
@@ -171,9 +173,13 @@ const ProductDetailPage: React.FC = () => {
           <div className="space-y-4">
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
-                src={product.image}
+                src={images[0]}
                 alt={product.name}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://via.placeholder.com/400x400?text=No+Image';
+                }}
               />
             </div>
             <div className="grid grid-cols-4 gap-4">
@@ -183,9 +189,13 @@ const ProductDetailPage: React.FC = () => {
                   className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                 >
                   <img
-                    src={product.image}
+                    src={img}
                     alt={`${product.name} view ${index + 1}`}
                     className="w-full h-full object-cover hover:opacity-80 transition-opacity"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://via.placeholder.com/100x100?text=No+Image';
+                    }}
                   />
                 </div>
               ))}

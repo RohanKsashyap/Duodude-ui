@@ -1,8 +1,10 @@
 export interface Product {
-  id: number;
+  _id: string;
+  id?: number; // Keep for backward compatibility
   name: string;
   price: number;
-  images: string[];
+  images: string[]; // Array of image URLs
+  image?: string; // Single image URL for backward compatibility
   description: string;
   category: string;
   sizes?: string[];
@@ -10,6 +12,7 @@ export interface Product {
   featured?: boolean;
   new?: boolean;
   rating?: number;
+  stock?: number;
 }
 
 export interface User {

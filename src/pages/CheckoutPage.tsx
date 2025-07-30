@@ -34,7 +34,7 @@ const CheckoutPage: React.FC = () => {
         },
         body: JSON.stringify({
           items: cartItems.map(item => ({
-            product: item.product.id,
+            product: item.product._id || item.product.id,
             quantity: item.quantity,
             size: item.size,
           })),

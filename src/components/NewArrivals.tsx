@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from './ProductCard';
-import axios from 'axios';
+import api from '../config/axios';
 
 const NewArrivals: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -10,7 +10,7 @@ const NewArrivals: React.FC = () => {
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
-        const res = await axios.get('/api/products?sort=createdAt&limit=8');
+        const res = await api.get('/api/products?sort=createdAt&limit=8');
 
         // Check if response is an array or object
         const fetchedProducts = Array.isArray(res.data)

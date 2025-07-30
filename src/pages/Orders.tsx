@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../config/axios';
 
 interface OrderItem {
   product: {
@@ -34,13 +34,8 @@ const OrdersPage: React.FC = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await axios.get(
-          user?.isAdmin ? '/api/orders' : '/api/orders/myorders',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const res = await api.get(
+          user?.role === 'admin' ? '/api/orders' : '/api/orders/myorders'
         );
         setOrders(res.data);
       } catch (err) {
@@ -100,9 +95,13 @@ const OrdersPage: React.FC = () => {
                 {order.items.map((item, index) => (
                   <div key={index} className="flex items-center py-3">
                     <img
-                      src={item.product.images?.[0]}
+                      src={item.product.images && item.product.images.length > 0 ? item.product.images[0] : '/api/placeholder/64/64'}
                       alt={item.product.name}
                       className="w-16 h-16 object-cover rounded mr-4"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/api/placeholder/64/64';
+                      }}
                     />
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{item.product.name}</p>

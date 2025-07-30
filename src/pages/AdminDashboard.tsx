@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../config/axios';
 import {
   Users, ShoppingBag, TrendingUp, Eye, Edit, Trash2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import OrderDetailsModal from '../components/OrderDetailsModal';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products'>('overview');
@@ -24,10 +25,10 @@ const AdminDashboard: React.FC = () => {
 
       try {
         const [ordersRes, usersRes, productsRes, analyticsRes] = await Promise.all([
-          axios.get('/api/orders', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/users', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/products', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/orders/analytics', { headers: { Authorization: `Bearer ${token}` } }),
+          api.get('/api/orders'),
+          api.get('/api/users'),
+          api.get('/api/products'),
+          api.get('/api/orders/analytics'),
         ]);
         setOrders(ordersRes.data);
         setUsers(usersRes.data);
@@ -128,19 +129,19 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold mb-2">Recent Orders</h3>
-              {Array.isArray(orders) && <OrderTable orders={orders.slice(0, 5)} setOrders={setOrders} token={token} adminMode={false} />}
+              {Array.isArray(orders) && token && <OrderTable orders={orders.slice(0, 5)} setOrders={setOrders} token={token} adminMode={false} />}
             </div>
           </div>
         )}
 
         {/* Orders Tab */}
-        {activeTab === 'orders' && Array.isArray(orders) && <OrderTable orders={orders} setOrders={setOrders} token={token} adminMode={true} />}
+        {activeTab === 'orders' && Array.isArray(orders) && token && <OrderTable orders={orders} setOrders={setOrders} token={token} adminMode={true} />}
 
         {/* Users Tab */}
-        {activeTab === 'users' && Array.isArray(users) && <UsersTable users={users} setUsers={setUsers} token={token} />}
+        {activeTab === 'users' && Array.isArray(users) && token && <UsersTable users={users} setUsers={setUsers} token={token} />}
 
         {/* Products Tab */}
-        {activeTab === 'products' && Array.isArray(products) && <ProductTable products={products} setProducts={setProducts} token={token} />}
+        {activeTab === 'products' && Array.isArray(products) && token && <ProductTable products={products} setProducts={setProducts} token={token} />}
       </div>
     </div>
   );
@@ -152,68 +153,130 @@ export default AdminDashboard;
 const OrderTable: React.FC<{ orders: any[]; setOrders: (o: any[]) => void; token: string; adminMode: boolean }> = ({ orders, setOrders, token, adminMode }) => {
   const [editingId, setEditingId] = useState<string>('');
   const [editStatus, setEditStatus] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOrderClick = async (orderId: string) => {
+    try {
+      // Fetch detailed order information
+      const response = await api.get(`/api/orders/${orderId}`);
+      setSelectedOrder(response.data);
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch order details:', error);
+      // Fallback to using the order from the list
+      const order = orders.find(o => o._id === orderId);
+      if (order) {
+        setSelectedOrder(order);
+        setIsModalOpen(true);
+      }
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrder(null);
+  };
+
   const handleEdit = (order: any) => {
     setEditingId(order._id);
     setEditStatus(order.status);
   };
   const handleEditSave = async () => {
-    await axios.put(`/api/orders/${editingId}/status`, { status: editStatus }, { headers: { Authorization: `Bearer ${token}` } });
+    await api.put(`/api/orders/${editingId}/status`, { status: editStatus });
     setOrders(orders.map(o => (o._id === editingId ? { ...o, status: editStatus } : o)));
     setEditingId('');
   };
   const handleDelete = async (id: string) => {
-    await axios.delete(`/api/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    await api.delete(`/api/orders/${id}`);
     setOrders(orders.filter(o => o._id !== id));
   };
   return (
-    <table className="min-w-full bg-white border mt-4">
-      <thead>
-        <tr>
-          <th className="px-4 py-2 border">Order ID</th>
-          <th className="px-4 py-2 border">User</th>
-          <th className="px-4 py-2 border">Total</th>
-          <th className="px-4 py-2 border">Status</th>
-          <th className="px-4 py-2 border">Date</th>
-          {adminMode && <th className="px-4 py-2 border">Actions</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {orders.map(order => (
-          <tr key={order._id}>
-            <td className="border px-4 py-2">{order._id}</td>
-            <td className="border px-4 py-2">{order.user?.name || 'N/A'}</td>
-            <td className="border px-4 py-2">${order.total?.toFixed(2)}</td>
-            <td className="border px-4 py-2">
-              {editingId === order._id ? (
-                <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="border px-2 py-1">
-                  {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              ) : (
-                order.status
-              )}
-            </td>
-            <td className="border px-4 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
-            {adminMode && (
+    <>
+      <table className="min-w-full bg-white border mt-4">
+        <thead>
+          <tr>
+            <th className="px-4 py-2 border">Order ID</th>
+            <th className="px-4 py-2 border">User</th>
+            <th className="px-4 py-2 border">Total</th>
+            <th className="px-4 py-2 border">Status</th>
+            <th className="px-4 py-2 border">Date</th>
+            {adminMode && <th className="px-4 py-2 border">Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map(order => (
+            <tr
+              key={order._id}
+              className="hover:bg-gray-50 cursor-pointer transition-colors"
+              onClick={() => handleOrderClick(order._id)}
+            >
+              <td className="border px-4 py-2">{order._id}</td>
+              <td className="border px-4 py-2">{order.user?.name || 'N/A'}</td>
+              <td className="border px-4 py-2">${order.total?.toFixed(2)}</td>
               <td className="border px-4 py-2">
                 {editingId === order._id ? (
-                  <>
-                    <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
-                    <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
-                  </>
+                  <select
+                    value={editStatus}
+                    onChange={e => setEditStatus(e.target.value)}
+                    className="border px-2 py-1"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 ) : (
-                  <>
-                    <button onClick={() => handleEdit(order)} className="text-blue-600 mr-2">Edit</button>
-                    <button onClick={() => handleDelete(order._id)} className="text-red-600">Delete</button>
-                  </>
+                  order.status
                 )}
               </td>
-            )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+              <td className="border px-4 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
+              {adminMode && (
+                <td className="border px-4 py-2">
+                  {editingId === order._id ? (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEditSave(); }}
+                        className="text-green-600 mr-2"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingId(''); }}
+                        className="text-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEdit(order); }}
+                        className="text-blue-600 mr-2"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(order._id); }}
+                        className="text-red-600"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      <OrderDetailsModal
+        order={selectedOrder}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
+    </>
   );
 };
 // Inline UsersTable component
@@ -226,12 +289,12 @@ const UsersTable: React.FC<{ users: any[]; setUsers: (u: any[]) => void; token: 
     setEditRole(user.role);
   };
   const handleEditSave = async () => {
-    await axios.put(`/api/users/${editingId}`, { role: editRole }, { headers: { Authorization: `Bearer ${token}` } });
+    await api.put(`/api/users/${editingId}`, { role: editRole });
     setUsers(users.map(u => (u._id === editingId ? { ...u, role: editRole } : u)));
     setEditingId('');
   };
   const handleDelete = async (id: string) => {
-    await axios.delete(`/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    await api.delete(`/api/users/${id}`);
     setUsers(users.filter(u => u._id !== id));
   };
   return (
@@ -285,30 +348,61 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
   if (!Array.isArray(products)) return <div>No products data.</div>;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
-  const [newProduct, setNewProduct] = useState<any>({ name: '', price: '', stock: '', category: '', description: '' });
+  const [newProduct, setNewProduct] = useState<any>({ name: '', price: '', stock: '', category: '', description: '', images: [''] });
   const handleEdit = (product: any) => {
     setEditingId(product._id);
-    setEditForm(product);
+    setEditForm({ ...product, images: product.images || [''] });
   };
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
   };
+  const handleImageChange = (index: number, value: string, isEdit: boolean = false) => {
+    if (isEdit) {
+      const newImages = [...(editForm.images || [''])];
+      newImages[index] = value;
+      setEditForm({ ...editForm, images: newImages });
+    } else {
+      const newImages = [...(newProduct.images || [''])];
+      newImages[index] = value;
+      setNewProduct({ ...newProduct, images: newImages });
+    }
+  };
+  const addImageField = (isEdit: boolean = false) => {
+    if (isEdit) {
+      setEditForm({ ...editForm, images: [...(editForm.images || ['']), ''] });
+    } else {
+      setNewProduct({ ...newProduct, images: [...(newProduct.images || ['']), ''] });
+    }
+  };
+  const removeImageField = (index: number, isEdit: boolean = false) => {
+    if (isEdit) {
+      const newImages = editForm.images.filter((_: any, i: number) => i !== index);
+      setEditForm({ ...editForm, images: newImages.length ? newImages : [''] });
+    } else {
+      const newImages = newProduct.images.filter((_: any, i: number) => i !== index);
+      setNewProduct({ ...newProduct, images: newImages.length ? newImages : [''] });
+    }
+  };
   const handleEditSave = async () => {
-    await axios.put(`/api/products/${editingId}`, editForm, { headers: { Authorization: `Bearer ${token}` } });
+    await api.put(`/api/products/${editingId}`, editForm);
     setProducts(products.map(p => (p._id === editingId ? { ...p, ...editForm } : p)));
     setEditingId(null);
   };
   const handleDelete = async (id: string) => {
-    await axios.delete(`/api/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    await api.delete(`/api/products/${id}`);
     setProducts(products.filter(p => p._id !== id));
   };
   const handleNewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewProduct({ ...newProduct, [e.target.name]: e.target.value });
   };
   const handleAdd = async () => {
-    const res = await axios.post('/api/products', newProduct, { headers: { Authorization: `Bearer ${token}` } });
+    const productData = {
+      ...newProduct,
+      images: newProduct.images.filter((img: string) => img.trim() !== '')
+    };
+    const res = await api.post('/api/products', productData);
     setProducts([...products, res.data]);
-    setNewProduct({ name: '', price: '', stock: '', category: '', description: '' });
+    setNewProduct({ name: '', price: '', stock: '', category: '', description: '', images: [''] });
   };
   return (
     <div>
@@ -316,6 +410,7 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
       <table className="min-w-full bg-white border">
         <thead>
           <tr>
+            <th className="px-4 py-2 border">Image</th>
             <th className="px-4 py-2 border">Name</th>
             <th className="px-4 py-2 border">Price</th>
             <th className="px-4 py-2 border">Stock</th>
@@ -326,6 +421,73 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
         <tbody>
           {products.map(product => (
             <tr key={product._id}>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <div className="space-y-2">
+                    {(editForm.images || ['']).map((img: string, index: number) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <input
+                          type="url"
+                          value={img}
+                          onChange={(e) => handleImageChange(index, e.target.value, true)}
+                          className="border px-2 py-1 text-xs w-32"
+                          placeholder="Image URL"
+                        />
+                        {editForm.images.length > 1 && (
+                          <button
+                            onClick={() => removeImageField(index, true)}
+                            className="text-red-500 text-xs"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => addImageField(true)}
+                      className="text-blue-500 text-xs"
+                    >
+                      + Add Image
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {product.images && product.images.length > 0 ? (
+                      product.images.slice(0, 2).map((img: string, index: number) => (
+                        <img
+                          key={index}
+                          src={img}
+                          alt={product.name}
+                          className="w-12 h-12 object-cover rounded"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://via.placeholder.com/48x48?text=No+Image';
+                          }}
+                        />
+                      ))
+                    ) : (product as any).image ? (
+                      <img
+                        src={(product as any).image}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://via.placeholder.com/48x48?text=No+Image';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs">
+                        No Image
+                      </div>
+                    )}
+                    {product.images && product.images.length > 2 && (
+                      <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xs">
+                        +{product.images.length - 2}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </td>
               <td className="border px-4 py-2">
                 {editingId === product._id ? (
                   <input name="name" value={editForm.name} onChange={handleEditChange} className="border px-2 py-1" />
@@ -370,6 +532,35 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
             </tr>
           ))}
           <tr>
+            <td className="border px-4 py-2">
+              <div className="space-y-2">
+                {(newProduct.images || ['']).map((img: string, index: number) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <input
+                      type="url"
+                      value={img}
+                      onChange={(e) => handleImageChange(index, e.target.value, false)}
+                      className="border px-2 py-1 text-xs w-32"
+                      placeholder="Image URL"
+                    />
+                    {newProduct.images.length > 1 && (
+                      <button
+                        onClick={() => removeImageField(index, false)}
+                        className="text-red-500 text-xs"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={() => addImageField(false)}
+                  className="text-blue-500 text-xs"
+                >
+                  + Add Image
+                </button>
+              </div>
+            </td>
             <td className="border px-4 py-2">
               <input name="name" value={newProduct.name} onChange={handleNewChange} className="border px-2 py-1" placeholder="Name" />
             </td>

@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
 import { useAuth } from './AuthContext'; // You must have this
-import axios from 'axios';
-import { baseurl } from '../pages/ProductsPage';
+import api from '../config/axios';
 
 interface CartItem {
   product: Product;
@@ -13,8 +12,8 @@ interface CartItem {
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Product, quantity: number, size?: string) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeFromCart: (productId: string | number) => void;
+  updateQuantity: (productId: string | number, quantity: number) => void;
   clearCart: () => void;
   syncLocalToDB: () => Promise<void>;
 }
@@ -30,9 +29,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadCart = async () => {
       if (isAuthenticated) {
         try {
-          const res = await axios.get(`${baseurl}/api/cart`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const res = await api.get('/api/cart');
           if (Array.isArray(res.data.items)) {
             setCartItems(
               res.data.items.map((item: any) => ({
@@ -70,17 +67,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       for (const item of localItems) {
-        await axios.post(
-          `${baseurl}/api/cart/add`,
-          {
-            productId: item.product._id || item.product.id,
-            quantity: item.quantity,
-            size: item.size,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        await api.post('/api/cart/add', {
+          productId: item.product._id || item.product.id,
+          quantity: item.quantity,
+          size: item.size,
+        });
       }
       localStorage.removeItem('cart');
     } catch (err) {
@@ -94,21 +85,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 🧠 For logged in users, sync to backend
     if (isAuthenticated) {
       try {
-        await axios.post(
-          `${baseurl}/api/cart/add`,
-          {
-            productId: product._id || product.id,
-            quantity,
-            size,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        // Refresh cart
-        const res = await axios.get(`${baseurl}/api/cart`, {
-          headers: { Authorization: `Bearer ${token}` },
+        await api.post('/api/cart/add', {
+          productId: product._id || product.id,
+          quantity,
+          size,
         });
+        // Refresh cart
+        const res = await api.get('/api/cart');
         setCartItems(
           res.data.items.map((item: any) => ({
             product: item.product,
@@ -123,7 +106,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Guest cart (local)
       setCartItems(prev => {
         const index = prev.findIndex(
-          item => item.product.id === product.id && item.size === size
+          item => (item.product._id || item.product.id) === (product._id || product.id) && item.size === size
         );
         if (index > -1) {
           const updated = [...prev];
@@ -135,14 +118,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const removeFromCart = (productId: number) => {
-    setCartItems(prev => prev.filter(item => item.product.id !== productId));
+  const removeFromCart = (productId: string | number) => {
+    setCartItems(prev => prev.filter(item => (item.product._id || item.product.id) !== productId));
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = (productId: string | number, quantity: number) => {
     setCartItems(prev =>
       prev.map(item =>
-        item.product.id === productId
+        (item.product._id || item.product.id) === productId
           ? { ...item, quantity: Math.max(1, quantity) }
           : item
       )
@@ -153,9 +136,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCartItems([]);
     if (isAuthenticated) {
       try {
-        await axios.delete(`${baseurl}/api/cart/clear`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await api.delete('/api/cart/clear');
       } catch (err) {
         console.error('Error clearing cart:', err);
       }

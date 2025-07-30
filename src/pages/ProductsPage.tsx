@@ -35,7 +35,11 @@ const ProductsPage: React.FC = () => {
     if (sortOrder) params.append('sortOrder', sortOrder);
     fetch(`${baseurl}/api/products?${params.toString()}`)
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch products');
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch products`);
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Server returned non-JSON response. Check if backend is running.');
+        }
         return res.json();
       })
       .then((data: Product[]) => {
@@ -44,6 +48,7 @@ const ProductsPage: React.FC = () => {
         setLoading(false);
       })
       .catch(err => {
+        console.error('Products fetch error:', err);
         setError(err.message);
         setLoading(false);
       });
@@ -175,7 +180,7 @@ const ProductsPage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 gap-x-6 lg:grid-cols-3 xl:gap-x-8">
                 {filteredProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product._id || product.id} product={product} />
                 ))}
               </div>
             )}
