@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axios';
+import OrderDetailsModal from '../components/OrderDetailsModal';
 
 interface OrderItem {
   product: {
@@ -28,6 +29,8 @@ interface Order {
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { user, token } = useAuth();
   const navigate = useNavigate();
 
@@ -52,6 +55,43 @@ const OrdersPage: React.FC = () => {
       navigate('/login');
     }
   }, [user, token, navigate]);
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await api.put(`/api/orders/${orderId}/cancel`);
+      setOrders(orders.map(o => 
+        o._id === orderId ? { ...o, status: 'cancelled' } : o
+      ));
+      alert('Order cancelled successfully');
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      alert('Failed to cancel order');
+    }
+  };
+
+  const handleReturnOrder = async (orderId: string, returnItems: any[]) => {
+    try {
+      await api.post('/api/returns', {
+        orderId,
+        items: returnItems,
+        reason: 'Return request from user'
+      });
+      alert('Return request submitted successfully. Please await admin approval.');
+    } catch (error) {
+      console.error('Error submitting return request:', error);
+      alert('Failed to submit return request');
+    }
+  };
+
+  const openOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedOrder(null);
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
@@ -115,10 +155,81 @@ const OrdersPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+              
+              {/* Action buttons */}
+              <div className="flex justify-end mt-4 space-x-2">
+                <button
+                  onClick={() => openOrderDetails(order)}
+                  className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                >
+                  View Details
+                </button>
+                {order.status !== 'delivered' && order.status !== 'cancelled' ? (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('Are you sure you want to cancel this order?')) {
+                        try {
+                          await api.put(`/api/orders/${order._id}/cancel`);
+                          // Update the order status in the local state
+                          setOrders(orders.map(o => 
+                            o._id === order._id ? { ...o, status: 'cancelled' } : o
+                          ));
+                          alert('Order cancelled successfully');
+                        } catch (error) {
+                          console.error('Error cancelling order:', error);
+                          alert('Failed to cancel order');
+                        }
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                  >
+                    Cancel Order
+                  </button>
+                ) : order.status === 'delivered' ? (
+                  <button
+                    onClick={async () => {
+                      const reason = prompt('Please provide a reason for return:');
+                      if (reason) {
+                        try {
+                          const returnItems = order.items.map(item => ({
+                            product: item.product._id || item.product.id,
+                            quantity: item.quantity,
+                            size: item.size,
+                            reason: 'Product issue'
+                          }));
+                          
+                          await api.post('/api/returns', {
+                            orderId: order._id,
+                            items: returnItems,
+                            reason: reason
+                          });
+                          
+                          alert('Return request submitted successfully. Please await admin approval.');
+                        } catch (error) {
+                          console.error('Error submitting return request:', error);
+                          alert('Failed to submit return request');
+                        }
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                  >
+                    Return Order
+                  </button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>
       )}
+      
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        order={selectedOrder}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onCancel={handleCancelOrder}
+        onReturn={handleReturnOrder}
+      />
     </div>
   );
 };

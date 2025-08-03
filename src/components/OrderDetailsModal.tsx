@@ -36,9 +36,11 @@ interface OrderDetailsModalProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
+  onCancel?: (orderId: string) => void;
+  onReturn?: (orderId: string, items: any[]) => void;
 }
 
-const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, onClose }) => {
+const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, onClose, onCancel, onReturn }) => {
   if (!isOpen || !order) return null;
 
   const getStatusColor = (status: string) => {
@@ -204,15 +206,49 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end p-6 border-t bg-gray-50">
-          <button
+{/* Action Buttons */}
+        <div className="flex justify-end space-x-4">
+          {order.status !== 'delivered' && order.status !== 'cancelled' && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to cancel this order?')) {
+                  onCancel?.(order._id);
+                  onClose();
+                }
+              }}
+              className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              Cancel Order
+            </button>
+          )}
+          {order.status === 'delivered' && order.items.some(item => item.product.returnAvailable) && (
+            <button
+              onClick={() => {
+                const reason = prompt('Please provide a reason for return:');
+                if (reason) {
+                  const returnItems = order.items.map(item => ({
+                    product: item.product._id,
+                    quantity: item.quantity,
+                    size: item.size,
+                    reason: 'Product issue'
+                  }));
+                
+                  onReturn?.(order._id, returnItems);
+                  onClose();
+                }
+              }}
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Request Return
+            </button>
+          )}
+          <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+          >
             Close
-          </button>
-        </div>
+          </button>
+        </div>
       </div>
     </div>
   );

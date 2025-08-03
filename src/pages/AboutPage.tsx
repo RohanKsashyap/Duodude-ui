@@ -19,7 +19,7 @@ const AboutPage: React.FC = () => {
             Our Story
           </h1>
           <p className="mt-6 text-xl text-white max-w-3xl">
-            Founded in 2020, ELEGANCE was born from a passion for sustainable fashion and timeless design.
+            Founded in 2025, DuoDude was born from a passion for sustainable fashion and timeless design.
           </p>
         </div>
       </div>
@@ -113,8 +113,8 @@ const AboutPage: React.FC = () => {
               src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=4&w=256&h=256&q=60"
               alt="Team member"
             />
-            <h3 className="mt-6 text-base font-semibold text-gray-900">Emma Thompson</h3>
-            <p className="text-sm text-gray-500">Founder & Creative Director</p>
+            <h3 className="mt-6 text-base font-semibold text-gray-900">Shiv Rai</h3>
+            <p className="text-sm text-gray-500">CO-Founder & Creative Director</p>
           </div>
           <div className="text-center">
             <img
@@ -122,8 +122,8 @@ const AboutPage: React.FC = () => {
               src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=4&w=256&h=256&q=60"
               alt="Team member"
             />
-            <h3 className="mt-6 text-base font-semibold text-gray-900">David Chen</h3>
-            <p className="text-sm text-gray-500">Head of Design</p>
+            <h3 className="mt-6 text-base font-semibold text-gray-900">Rohan Kashyap</h3>
+            <p className="text-sm text-gray-500">CO-Founder & Creative Director</p>
           </div>
           <div className="text-center">
             <img
@@ -131,8 +131,8 @@ const AboutPage: React.FC = () => {
               src="https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=4&w=256&h=256&q=60"
               alt="Team member"
             />
-            <h3 className="mt-6 text-base font-semibold text-gray-900">Sophia Rodriguez</h3>
-            <p className="text-sm text-gray-500">Sustainability Manager</p>
+            <h3 className="mt-6 text-base font-semibold text-gray-900">Sanjana Rai</h3>
+            <p className="text-sm text-gray-500">Head  Designer</p>
           </div>
         </div>
       </div>

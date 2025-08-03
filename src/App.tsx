@@ -15,6 +15,8 @@ import { AuthProvider } from './context/AuthContext';
 import ContactPage from './pages/ContactPage';
 import ProfilePage from './pages/ProfilePage';
 import CheckoutPage from './pages/CheckoutPage';
+import OrdersPage from './pages/Orders';
+import AccountSettings from './pages/AccountSettings';
 
 function App() {
   return (
@@ -38,6 +40,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/orders" 
+                  element={
+                    <ProtectedRoute>
+                      <OrdersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ProtectedRoute>
+                      <AccountSettings />
                     </ProtectedRoute>
                   }
                 />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Menu, X, Search, User, LogOut, Settings } from 'lucide-react';
+import { ShoppingBag, Menu, X, Search, User, LogOut, Settings, Package, MapPin } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -71,10 +71,26 @@ const Navbar: React.FC = () => {
                       <p className="font-medium">{user.name}</p>
                       <p className="text-gray-500">{user.email}</p>
                     </div>
+                    <Link
+                      to="/orders"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <Package size={16} className="mr-2" />
+                      My Orders
+                    </Link>
+                    <Link
+                      to="/settings"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <MapPin size={16} className="mr-2" />
+                      Settings
+                    </Link>
                     {user.role === 'admin' && (
                       <Link
                         to="/admin"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         <Settings size={16} className="mr-2" />
@@ -83,7 +99,7 @@ const Navbar: React.FC = () => {
                     )}
                     <button
                       onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t"
                     >
                       <LogOut size={16} className="mr-2" />
                       Sign out
@@ -144,6 +160,28 @@ const Navbar: React.FC = () => {
             >
               Contact
             </Link>
+            {user && (
+              <>
+                <div className="border-t border-gray-200 mt-3 pt-3">
+                  <Link 
+                    to="/orders" 
+                    className="text-gray-700 hover:text-gray-900 flex items-center px-3 py-2 text-base font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Package size={18} className="mr-2" />
+                    My Orders
+                  </Link>
+                  <Link 
+                    to="/settings" 
+                    className="text-gray-700 hover:text-gray-900 flex items-center px-3 py-2 text-base font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <MapPin size={18} className="mr-2" />
+                    Settings
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
