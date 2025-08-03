@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axios';
 import OrderDetailsModal from '../components/OrderDetailsModal';
+import OptimizedImage from '../components/OptimizedImage';
 
 interface OrderItem {
   product: {
@@ -26,30 +27,7 @@ interface Order {
   createdAt: string;
 }
 
-// Memoized image component to prevent flickering
-const ItemImage = memo(({ src, alt }: { src: string; alt: string }) => {
-  const [imgSrc, setImgSrc] = useState(src);
-  
-  const handleError = useCallback(() => {
-    setImgSrc('/api/placeholder/64/64');
-  }, []);
-  
-  useEffect(() => {
-    setImgSrc(src);
-  }, [src]);
-  
-  return (
-    <img
-      src={imgSrc}
-      alt={alt}
-      className="w-16 h-16 object-cover rounded mr-4"
-      onError={handleError}
-      loading="lazy"
-    />
-  );
-});
-
-ItemImage.displayName = 'ItemImage';
+// Use OptimizedImage for better performance and lazy loading
 
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -159,9 +137,12 @@ const OrdersPage: React.FC = () => {
               <div className="divide-y divide-gray-100 mt-4">
                 {order.items.map((item, index) => (
                   <div key={index} className="flex items-center py-3">
-                    <ItemImage
+                    <OptimizedImage
                       src={item.product.images && item.product.images.length > 0 ? item.product.images[0] : '/api/placeholder/64/64'}
                       alt={item.product.name}
+                      className="w-16 h-16 object-cover rounded mr-4"
+                      width={64}
+                      height={64}
                     />
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{item.product.name}</p>

@@ -1,4 +1,5 @@
 import React, { memo, useState, useCallback, useEffect } from 'react';
+import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
 
 interface OptimizedImageProps {
   src: string;
@@ -19,6 +20,7 @@ const OptimizedImage = memo(({
   width,
   height
 }: OptimizedImageProps) => {
+  const { elementRef, isIntersecting } = useIntersectionObserver();
   const [imgSrc, setImgSrc] = useState(src);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -37,16 +39,16 @@ const OptimizedImage = memo(({
   }, []);
   
   useEffect(() => {
-    // Reset states when src changes
-    if (src !== imgSrc && !hasError) {
+    // Reset states and load only if in viewport
+    if (isIntersecting && src !== imgSrc && !hasError) {
       setImgSrc(src);
       setIsLoading(true);
       setHasError(false);
     }
-  }, [src, imgSrc, hasError]);
+  }, [src, imgSrc, hasError, isIntersecting]);
   
   return (
-    <div className={`relative ${isLoading ? 'bg-gray-200 animate-pulse' : ''}`}>
+    <div ref={elementRef} className={`relative ${isLoading ? 'bg-gray-200 animate-pulse' : ''}`}>
       <img
         src={imgSrc}
         alt={alt}

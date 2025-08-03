@@ -1,5 +1,6 @@
 import React, { memo, useState, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
+import OptimizedImage from './OptimizedImage';
 
 interface OrderItem {
   product: {
@@ -40,30 +41,7 @@ interface OrderDetailsModalProps {
   onReturn?: (orderId: string, items: any[]) => void;
 }
 
-// Memoized image component to prevent flickering in modal
-const ModalItemImage = memo(({ src, alt }: { src: string; alt: string }) => {
-  const [imgSrc, setImgSrc] = useState(src);
-  
-  const handleError = useCallback(() => {
-    setImgSrc('https://via.placeholder.com/80x80?text=No+Image');
-  }, []);
-  
-  useEffect(() => {
-    setImgSrc(src);
-  }, [src]);
-  
-  return (
-    <img
-      src={imgSrc}
-      alt={alt}
-      className="w-20 h-20 object-cover rounded-lg"
-      onError={handleError}
-      loading="lazy"
-    />
-  );
-});
-
-ModalItemImage.displayName = 'ModalItemImage';
+// Use OptimizedImage for better performance
 
 const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, onClose, onCancel, onReturn }) => {
   if (!isOpen || !order) return null;
@@ -176,7 +154,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                 {order.items.map((item, index) => (
                   <div key={index} className="p-4 flex items-center space-x-4">
                     <div className="flex-shrink-0">
-                      <ModalItemImage
+                      <OptimizedImage
                         src={
                           // Handle both old 'image' field and new 'images' array
                           (item.product as any).image ||
@@ -184,6 +162,10 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                           'https://via.placeholder.com/80x80?text=No+Image'
                         }
                         alt={item.product.name}
+                        className="w-20 h-20 object-cover rounded-lg"
+                        width={80}
+                        height={80}
+                        fallbackSrc="https://via.placeholder.com/80x80?text=No+Image"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
