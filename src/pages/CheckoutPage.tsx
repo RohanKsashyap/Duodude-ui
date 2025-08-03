@@ -95,34 +95,49 @@ useEffect(() => {
     setLoading(true);
     setError('');
     setSuccess('');
+    
+    // Validate required fields
+    if (!address.name || !address.street || !address.city || !address.zip || !address.country) {
+      setError('Please fill in all address fields');
+      setLoading(false);
+      return;
+    }
+    
+    if (cartItems.length === 0) {
+      setError('Your cart is empty');
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${baseurl}/api/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const orderData = {
+        items: cartItems.map(item => ({
+          product: item.product._id || item.product.id,
+          quantity: item.quantity,
+          size: item.size,
+        })),
+        total: parseFloat(total.toFixed(2)),
+        shippingAddress: {
+          name: address.name.trim(),
+          street: address.street.trim(),
+          city: address.city.trim(),
+          zip: address.zip.trim(),
+          country: address.country.trim()
         },
-        body: JSON.stringify({
-          items: cartItems.map(item => ({
-            product: item.product._id || item.product.id,
-            quantity: item.quantity,
-            size: item.size,
-          })),
-          total,
-          shippingAddress: address,
-          paymentMethod: 'cod',
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Failed to place order');
-      }
+        paymentMethod: 'cod',
+      };
+      
+      console.log('Order data being sent:', orderData); // Debug log
+      
+      const res = await api.post('/api/orders', orderData);
+      
       setSuccess('Order placed successfully!');
       clearCart();
       setTimeout(() => navigate('/orders'), 2000);
     } catch (err: any) {
-      setError(err.message);
+      console.error('Order creation error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to place order';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

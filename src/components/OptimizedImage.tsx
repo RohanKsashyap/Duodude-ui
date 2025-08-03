@@ -39,13 +39,15 @@ const OptimizedImage = memo(({
   }, []);
   
   useEffect(() => {
-    // Reset states and load only if in viewport
-    if (isIntersecting && src !== imgSrc && !hasError) {
-      setImgSrc(src);
-      setIsLoading(true);
-      setHasError(false);
+    // Only load image when it enters viewport for the first time
+    if (loading === 'eager' || isIntersecting) {
+      if (src !== imgSrc && !hasError) {
+        setImgSrc(src);
+        setIsLoading(true);
+        setHasError(false);
+      }
     }
-  }, [src, imgSrc, hasError, isIntersecting]);
+  }, [src, isIntersecting, loading, imgSrc, hasError]);
   
   return (
     <div ref={elementRef} className={`relative ${isLoading ? 'bg-gray-200 animate-pulse' : ''}`}>
