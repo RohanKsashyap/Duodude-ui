@@ -207,9 +207,9 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
         </div>
 
 {/* Action Buttons */}
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4">
           {order.status !== 'delivered' && order.status !== 'cancelled' && (
-            <button
+            <button
               onClick={() => {
                 if (window.confirm('Are you sure you want to cancel this order?')) {
                   onCancel?.(order._id);
@@ -217,12 +217,12 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                 }
               }}
               className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
+            >
               Cancel Order
-            </button>
+            </button>
           )}
           {order.status === 'delivered' && order.items.some(item => item.product.returnAvailable) && (
-            <button
+            <button
               onClick={() => {
                 const reason = prompt('Please provide a reason for return:');
                 if (reason) {
@@ -238,17 +238,17 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                 }
               }}
               className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
+            >
               Request Return
-            </button>
+            </button>
           )}
-          <button
+          <button
             onClick={onClose}
             className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
+          >
             Close
-          </button>
-        </div>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Edit2, Plus, MapPin } from 'lucide-react';
+import api from '../config/axios';
 import { baseurl } from './ProductsPage';
 
+interface Address {
+  name: string;
+  street: string;
+  city: string;
+  zip: string;
+  country: string;
+}
+
 const CheckoutPage: React.FC = () => {
+  const { user, token } = useAuth();
   const { cartItems, clearCart } = useCart();
-  const [address, setAddress] = useState({ name: '', street: '', city: '', zip: '', country: '' });
+  const [address, setAddress] = useState<Address>({ name: '', street: '', city: '', zip: '', country: '' });
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [showAddressForm, setShowAddressForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
@@ -15,6 +30,27 @@ const CheckoutPage: React.FC = () => {
   const shipping = subtotal > 100 ? 0 : 10;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
+
+useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get('/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const defaultAddress = res.data.addresses.find((address: any) => address.isDefault);
+        setAddress(defaultAddress || address);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [token]);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAddress({ ...address, [e.target.name]: e.target.value });
