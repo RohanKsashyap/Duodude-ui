@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axios';
@@ -25,6 +25,31 @@ interface Order {
   status: string;
   createdAt: string;
 }
+
+// Memoized image component to prevent flickering
+const ItemImage = memo(({ src, alt }: { src: string; alt: string }) => {
+  const [imgSrc, setImgSrc] = useState(src);
+  
+  const handleError = useCallback(() => {
+    setImgSrc('/api/placeholder/64/64');
+  }, []);
+  
+  useEffect(() => {
+    setImgSrc(src);
+  }, [src]);
+  
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      className="w-16 h-16 object-cover rounded mr-4"
+      onError={handleError}
+      loading="lazy"
+    />
+  );
+});
+
+ItemImage.displayName = 'ItemImage';
 
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -56,10 +81,10 @@ const OrdersPage: React.FC = () => {
     }
   }, [user, token, navigate]);
 
-  const handleCancelOrder = async (orderId: string) => {
+  const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
       await api.put(`/api/orders/${orderId}/cancel`);
-      setOrders(orders.map(o => 
+      setOrders(prevOrders => prevOrders.map(o => 
         o._id === orderId ? { ...o, status: 'cancelled' } : o
       ));
       alert('Order cancelled successfully');
@@ -67,9 +92,9 @@ const OrdersPage: React.FC = () => {
       console.error('Error cancelling order:', error);
       alert('Failed to cancel order');
     }
-  };
+  }, []);
 
-  const handleReturnOrder = async (orderId: string, returnItems: any[]) => {
+  const handleReturnOrder = useCallback(async (orderId: string, returnItems: any[]) => {
     try {
       await api.post('/api/returns', {
         orderId,
@@ -81,17 +106,17 @@ const OrdersPage: React.FC = () => {
       console.error('Error submitting return request:', error);
       alert('Failed to submit return request');
     }
-  };
+  }, []);
 
-  const openOrderDetails = (order: Order) => {
+  const openOrderDetails = useCallback((order: Order) => {
     setSelectedOrder(order);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedOrder(null);
     setIsModalOpen(false);
-  };
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
@@ -134,14 +159,9 @@ const OrdersPage: React.FC = () => {
               <div className="divide-y divide-gray-100 mt-4">
                 {order.items.map((item, index) => (
                   <div key={index} className="flex items-center py-3">
-                    <img
+                    <ItemImage
                       src={item.product.images && item.product.images.length > 0 ? item.product.images[0] : '/api/placeholder/64/64'}
                       alt={item.product.name}
-                      className="w-16 h-16 object-cover rounded mr-4"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/api/placeholder/64/64';
-                      }}
                     />
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{item.product.name}</p>
@@ -166,19 +186,9 @@ const OrdersPage: React.FC = () => {
                 </button>
                 {order.status !== 'delivered' && order.status !== 'cancelled' ? (
                   <button
-                    onClick={async () => {
+                    onClick={() => {
                       if (window.confirm('Are you sure you want to cancel this order?')) {
-                        try {
-                          await api.put(`/api/orders/${order._id}/cancel`);
-                          // Update the order status in the local state
-                          setOrders(orders.map(o => 
-                            o._id === order._id ? { ...o, status: 'cancelled' } : o
-                          ));
-                          alert('Order cancelled successfully');
-                        } catch (error) {
-                          console.error('Error cancelling order:', error);
-                          alert('Failed to cancel order');
-                        }
+                        handleCancelOrder(order._id);
                       }
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
