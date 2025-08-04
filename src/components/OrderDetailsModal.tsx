@@ -1,6 +1,7 @@
 import React, { memo, useState, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
+import { formatINR, convertUSDToINR } from '../utils/currency';
 
 interface OrderItem {
   product: {
@@ -101,7 +102,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total:</span>
-                    <span className="font-semibold text-lg">${order.total.toFixed(2)}</span>
+                    <span className="font-semibold text-lg">{formatINR(convertUSDToINR(order.total))}</span>
                   </div>
                   {order.paymentMethod && (
                     <div className="flex justify-between">
@@ -179,7 +180,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <div className="text-lg font-medium text-gray-900">
-                        ${item.product.price.toFixed(2)}
+                        {formatINR(convertUSDToINR(item.product.price))}
                       </div>
                       <div className="text-sm text-gray-500">
                         each
@@ -187,7 +188,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <div className="text-lg font-semibold text-gray-900">
-                        ${(item.product.price * item.quantity).toFixed(2)}
+                      {formatINR(convertUSDToINR(item.product.price * item.quantity))}
                       </div>
                       <div className="text-sm text-gray-500">
                         subtotal
@@ -201,7 +202,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
               <div className="bg-gray-50 p-4 border-t">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-xl font-bold text-gray-900">${order.total.toFixed(2)}</span>
+                  <span className="text-xl font-bold text-gray-900">{formatINR(convertUSDToINR(order.total))}</span>
                 </div>
               </div>
             </div>

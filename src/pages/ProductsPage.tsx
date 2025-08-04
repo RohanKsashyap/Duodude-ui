@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useLocation } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { Product } from '../types';
 import { Filter, SlidersHorizontal } from 'lucide-react';
+import { formatINR, convertUSDToINR } from '../utils/currency';
 
 export const baseurl= import.meta.env.VITE_backend_url
 
@@ -162,8 +164,8 @@ const ProductsPage: React.FC = () => {
                       className="w-full"
                     />
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>${priceRange[0]}</span>
-                      <span>${priceRange[1]}</span>
+                      <span>{formatINR(convertUSDToINR(priceRange[0]))}</span>
+                      <span>{formatINR(convertUSDToINR(priceRange[1]))}</span>
                     </div>
                   </div>
                 </div>

@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect} from 'react';
+import { toast } from 'react-toastify';
+
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Product } from '../types';
 import { baseurl } from './ProductsPage';
+import { formatPrice, formatINR, convertUSDToINR } from '../utils/currency';
 
 interface CartItem {
   product: Product;
@@ -141,7 +144,7 @@ const CartPage: React.FC = () => {
                           </Link>
                         </h4>
                         <p className="ml-4 text-sm font-medium text-gray-900">
-                          ${(item.product.price * item.quantity).toFixed(2)}
+                          {formatINR(convertUSDToINR(item.product.price * item.quantity))}
                         </p>
                       </div>
                       {item.product.colors && (
@@ -205,19 +208,19 @@ const CartPage: React.FC = () => {
                   <div key={label as string} className="flex items-center justify-between">
                     <p className="text-sm text-gray-600">{label}</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {label === 'Shipping' && shipping === 0 ? 'Free' : `$${(amt as number).toFixed(2)}`}
+                      {label === 'Shipping' && shipping === 0 ? 'Free' : formatINR(convertUSDToINR(amt as number))}
                     </p>
                   </div>
                 ))}
                 <div className="border-t border-gray-200 pt-4 flex items-center justify-between">
                   <p className="text-base font-medium text-gray-900">Order total</p>
-                  <p className="text-base font-medium text-gray-900">${total.toFixed(2)}</p>
+                  <p className="text-base font-medium text-gray-900">{formatINR(convertUSDToINR(total))}</p>
                 </div>
               </div>
               <button type="button" className="mt-8 w-full bg-black text-white rounded-md py-3 hover:bg-gray-800" onClick={() => navigate('/checkout')}>
                 Checkout
               </button>
-              <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over $100</p>
+              <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over ₹{convertUSDToINR(100).toFixed(0)}</p>
             </div>
           </div>
         </div>

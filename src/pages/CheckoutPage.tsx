@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { useCart } from '../context/CartContext';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Edit2, Plus, MapPin } from 'lucide-react';
 import api from '../config/axios';
 import { baseurl } from './ProductsPage';
+import { formatINR, convertUSDToINR } from '../utils/currency';
 
 interface Address {
   name: string;
@@ -26,12 +29,18 @@ const CheckoutPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  // Handling direct checkout item
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const directItem = query.get('direct') === 'true' ? JSON.parse(sessionStorage.getItem('directCheckoutItem') || '{}') : null;
+
+  const items = directItem ? [directItem] : cartItems;
+  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shipping = subtotal > 100 ? 0 : 10;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
 
-useEffect(() => {
+  useEffect(() => {
     const fetchProfile = async () => {
       if (!token) {
         setFetchingProfile(false);
@@ -63,7 +72,6 @@ useEffect(() => {
 
     fetchProfile();
   }, [token]);
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAddress({ ...address, [e.target.name]: e.target.value });
@@ -98,20 +106,20 @@ useEffect(() => {
     
     // Validate required fields
     if (!address.name || !address.street || !address.city || !address.zip || !address.country) {
-      setError('Please fill in all address fields');
+      toast.error('Please fill in all address fields');
       setLoading(false);
       return;
     }
     
-    if (cartItems.length === 0) {
-      setError('Your cart is empty');
+    if (items.length === 0) {
+      toast.error('No items to order');
       setLoading(false);
       return;
     }
     
     try {
       const orderData = {
-        items: cartItems.map(item => ({
+        items: items.map(item => ({
           product: item.product._id || item.product.id,
           quantity: item.quantity,
           size: item.size,
@@ -131,13 +139,17 @@ useEffect(() => {
       
       const res = await api.post('/api/orders', orderData);
       
-      setSuccess('Order placed successfully!');
-      clearCart();
+      toast.success('Order placed successfully!');
+      if (directItem) {
+        sessionStorage.removeItem('directCheckoutItem');
+      } else {
+        clearCart();
+      }
       setTimeout(() => navigate('/orders'), 2000);
     } catch (err: any) {
       console.error('Order creation error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to place order';
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -265,17 +277,17 @@ useEffect(() => {
         <div className="mb-6">
           <h3 className="font-semibold mb-2">Order Summary</h3>
           <ul className="mb-2">
-            {cartItems.map((item, idx) => (
+            {items.map((item, idx) => (
               <li key={idx} className="flex justify-between text-sm">
                 <span>{item.product.name} x {item.quantity}</span>
-                <span>${(item.product.price * item.quantity).toFixed(2)}</span>
+                <span>{formatINR(convertUSDToINR(item.product.price * item.quantity))}</span>
               </li>
             ))}
           </ul>
-          <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-          <div className="flex justify-between text-sm"><span>Shipping</span><span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span></div>
-          <div className="flex justify-between text-sm"><span>Tax</span><span>${tax.toFixed(2)}</span></div>
-          <div className="flex justify-between font-bold text-base mt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatINR(convertUSDToINR(subtotal))}</span></div>
+          <div className="flex justify-between text-sm"><span>Shipping</span><span>{shipping === 0 ? 'Free' : formatINR(convertUSDToINR(shipping))}</span></div>
+          <div className="flex justify-between text-sm"><span>Tax</span><span>{formatINR(convertUSDToINR(tax))}</span></div>
+          <div className="flex justify-between font-bold text-base mt-2"><span>Total</span><span>{formatINR(convertUSDToINR(total))}</span></div>
         </div>
         <button
           className="w-full bg-black text-white py-3 rounded font-semibold"
@@ -289,4 +301,4 @@ useEffect(() => {
   );
 };
 
-export default CheckoutPage; 
+export default CheckoutPage;

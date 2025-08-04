@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import api from '../config/axios';
 import {
   Users, ShoppingBag, TrendingUp, Eye, Edit, Trash2,
@@ -6,6 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import OrderDetailsModal from '../components/OrderDetailsModal';
+import { formatINR, convertUSDToINR } from '../utils/currency';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products'>('overview');
@@ -99,7 +101,7 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-green-100 p-4 rounded">
                 <div className="text-lg font-bold">Total Revenue</div>
-                <div className="text-2xl">${analytics?.totalSales?.toFixed(2) ?? totalRevenue.toFixed(2)}</div>
+                <div className="text-2xl">{formatINR(convertUSDToINR(analytics?.totalSales ?? totalRevenue))}</div>
               </div>
               <div className="bg-blue-100 p-4 rounded">
                 <div className="text-lg font-bold">Total Orders</div>
@@ -118,7 +120,7 @@ const AdminDashboard: React.FC = () => {
                     {analytics.salesByMonth.map((m: any) => (
                       <li key={m._id} className="flex justify-between">
                         <span>{m._id}</span>
-                        <span>${m.total.toFixed(2)} ({m.count} orders)</span>
+                        <span>{formatINR(convertUSDToINR(m.total))} ({m.count} orders)</span>
                       </li>
                     ))}
                   </ul>
@@ -213,7 +215,7 @@ const OrderTable: React.FC<{ orders: any[]; setOrders: (o: any[]) => void; token
             >
               <td className="border px-4 py-2">{order._id}</td>
               <td className="border px-4 py-2">{order.user?.name || 'N/A'}</td>
-              <td className="border px-4 py-2">${order.total?.toFixed(2)}</td>
+              <td className="border px-4 py-2">{formatINR(convertUSDToINR(order.total ?? 0))}</td>
               <td className="border px-4 py-2">
                 {editingId === order._id ? (
                   <select

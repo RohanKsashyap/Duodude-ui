@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { Product } from '../types';
 import { useAuth } from './AuthContext'; // You must have this
 import api from '../config/axios';
+import { useNavigate } from 'react-router-dom';
 
 interface CartItem {
   product: Product;
@@ -16,6 +18,7 @@ interface CartContextType {
   updateQuantity: (productId: string | number, quantity: number) => void;
   clearCart: () => void;
   syncLocalToDB: () => Promise<void>;
+  directToCheckout: (product: Product, quantity: number, size?: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -23,6 +26,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, token } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const navigate = useNavigate();
 
   // 🔁 Load cart from server or localStorage
   useEffect(() => {
@@ -156,9 +160,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const directToCheckout = (product: Product, quantity: number, size?: string) => {
+    // Create a temporary cart item for checkout
+    const checkoutItem: CartItem = { product, quantity, size };
+    
+    // Store the item temporarily in sessionStorage for checkout
+    sessionStorage.setItem('directCheckoutItem', JSON.stringify(checkoutItem));
+    
+    // Navigate to checkout
+    navigate('/checkout?direct=true');
+  };
+
   return (
     <CartContext.Provider
-      value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, syncLocalToDB }}
+      value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, syncLocalToDB, directToCheckout }}
     >
       {children}
     </CartContext.Provider>

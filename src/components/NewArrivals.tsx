@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from './ProductCard';
 import api from '../config/axios';
+import { toast } from 'react-toastify';
 
 const NewArrivals: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);

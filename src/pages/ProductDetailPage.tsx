@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Star,
@@ -14,11 +15,12 @@ import { useCart } from '../context/CartContext';
 import { baseurl } from './ProductsPage';
 import { Product, Review } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { formatPrice, convertUSDToINR } from '../utils/currency';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, directToCheckout } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,12 @@ const ProductDetailPage: React.FC = () => {
   const handleAddToCart = () => {
     if (product) {
       addToCart(product, quantity, selectedSize);
+    }
+  };
+
+  const handleBuyNow = () => {
+    if (product) {
+      directToCheckout(product, quantity, selectedSize);
     }
   };
 
@@ -224,7 +232,7 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <span className="text-3xl font-bold text-gray-900">${product.price}</span>
+                <span className="text-3xl font-bold text-gray-900">{formatPrice(product.price)}</span>
               </div>
             </div>
 
@@ -285,6 +293,12 @@ const ProductDetailPage: React.FC = () => {
                 <span>Add to Cart</span>
               </button>
               <button
+                onClick={handleBuyNow}
+                className="w-full bg-orange-500 text-white py-3 px-6 rounded-md hover:bg-orange-600 transition-colors"
+              >
+                Buy Now
+              </button>
+              <button
                 onClick={() => setIsWishlisted(!isWishlisted)}
                 className={`w-full py-3 px-6 rounded-md border transition-colors flex items-center justify-center space-x-2 ${
                   isWishlisted
@@ -302,7 +316,7 @@ const ProductDetailPage: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <Truck className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm text-gray-600">Free shipping on orders over $100</span>
+                  <span className="text-sm text-gray-600">Free shipping on orders over ₹{convertUSDToINR(100).toFixed(0)}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <RotateCcw className="w-5 h-5 text-gray-600" />

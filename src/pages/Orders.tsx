@@ -2,8 +2,10 @@ import React, { useEffect, useState, useCallback, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axios';
+import { formatINR, convertUSDToINR } from '../utils/currency';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 import OptimizedImage from '../components/OptimizedImage';
+import { toast } from 'react-toastify';
 
 interface OrderItem {
   product: {
@@ -65,10 +67,10 @@ const OrdersPage: React.FC = () => {
       setOrders(prevOrders => prevOrders.map(o => 
         o._id === orderId ? { ...o, status: 'cancelled' } : o
       ));
-      alert('Order cancelled successfully');
+      toast.success('Order cancelled successfully');
     } catch (error) {
       console.error('Error cancelling order:', error);
-      alert('Failed to cancel order');
+      toast.error('Failed to cancel order');
     }
   }, []);
 
@@ -79,10 +81,11 @@ const OrdersPage: React.FC = () => {
         items: returnItems,
         reason: 'Return request from user'
       });
-      alert('Return request submitted successfully. Please await admin approval.');
-    } catch (error) {
+      toast.success('Return request submitted successfully. Please await admin approval.');
+    } catch (error: any) {
       console.error('Error submitting return request:', error);
-      alert('Failed to submit return request');
+      const errorMessage = error.response?.data?.message || 'Failed to submit return request';
+      toast.error(`Return request failed: ${errorMessage}`);
     }
   }, []);
 
@@ -119,7 +122,7 @@ const OrdersPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-gray-700">${order.total.toFixed(2)}</p>
+                  <p className="font-semibold text-gray-700">{formatINR(convertUSDToINR(order.total))}</p>
                   <p
                     className={`text-sm font-medium ${
                       order.status === 'delivered'
@@ -151,7 +154,7 @@ const OrdersPage: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right text-gray-700 font-semibold">
-                      ${item.product.price.toFixed(2)}
+                      {formatINR(convertUSDToINR(item.product.price))}
                     </div>
                   </div>
                 ))}
@@ -196,9 +199,10 @@ const OrdersPage: React.FC = () => {
                           });
                           
                           alert('Return request submitted successfully. Please await admin approval.');
-                        } catch (error) {
+                        } catch (error: any) {
                           console.error('Error submitting return request:', error);
-                          alert('Failed to submit return request');
+                          const errorMessage = error.response?.data?.message || 'Failed to submit return request';
+                          alert(`Return request failed: ${errorMessage}`);
                         }
                       }
                     }}

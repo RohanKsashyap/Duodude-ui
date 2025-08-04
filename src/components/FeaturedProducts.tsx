@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ProductCard from './ProductCard';
 import api from '../config/axios';
 import { Product } from '../types';
+import { toast } from 'react-toastify';
 
 const FeaturedProducts: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);

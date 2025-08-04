@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Edit2, Trash2, MapPin, User, Mail, Lock } from 'lucide-react';
 import api from '../config/axios';
@@ -72,10 +73,10 @@ const AccountSettings: React.FC = () => {
         ...(profileForm.password ? { password: profileForm.password } : {})
       });
       setProfile(res.data);
-      setSuccess('Profile updated successfully!');
+      toast.success('Profile updated successfully!');
       setProfileForm({ ...profileForm, password: '' });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update profile');
+      toast.error(err.response?.data?.message || 'Failed to update profile');
     }
   };
 
@@ -87,15 +88,15 @@ const AccountSettings: React.FC = () => {
       if (editingAddress) {
         const res = await api.put(`/api/users/me/addresses/${editingAddress._id}`, addressForm);
         setProfile(res.data);
-        setSuccess('Address updated successfully!');
+        toast.success('Address updated successfully!');
       } else {
         const res = await api.post('/api/users/me/addresses', addressForm);
         setProfile(res.data);
-        setSuccess('Address added successfully!');
+        toast.success('Address added successfully!');
       }
       resetAddressForm();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save address');
+      toast.error(err.response?.data?.message || 'Failed to save address');
     }
   };
 
@@ -107,9 +108,9 @@ const AccountSettings: React.FC = () => {
     try {
       const res = await api.delete(`/api/users/me/addresses/${addressId}`);
       setProfile(res.data);
-      setSuccess('Address deleted successfully!');
+      toast.success('Address deleted successfully!');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete address');
+      toast.error(err.response?.data?.message || 'Failed to delete address');
     }
   };
 

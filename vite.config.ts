@@ -3,13 +3,10 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'axios', 'react-router-dom'],
-    exclude: ['lucide-react'],
-  },
+  plugins: [react({
+    include: "**/*.{jsx,tsx}",
+  })],
   build: {
-    // Optimize chunk splitting
     rollupOptions: {
       output: {
         manualChunks: {
@@ -19,21 +16,7 @@ export default defineConfig({
         },
       },
     },
-    // Reduce chunk size threshold
     chunkSizeWarningLimit: 1000,
-    // Enable source maps for debugging but keep them separate
     sourcemap: false,
-  },
-  // Enable compression and caching
-  server: {
-    headers: {
-      'Cache-Control': 'public, max-age=31536000',
-    },
-  },
-  // Preload important modules
-  resolve: {
-    alias: {
-      '@': new URL('./src', import.meta.url).pathname,
-    },
   },
 });

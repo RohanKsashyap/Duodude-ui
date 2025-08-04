@@ -17,12 +17,14 @@ import ProfilePage from './pages/ProfilePage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/Orders';
 import AccountSettings from './pages/AccountSettings';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <Router>
+      <Router>
+        <CartProvider>
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-grow">
@@ -72,8 +74,20 @@ function App() {
             </main>
             <Footer />
           </div>
-        </Router>
-      </CartProvider>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
+        </CartProvider>
+      </Router>
     </AuthProvider>
   );
 }
