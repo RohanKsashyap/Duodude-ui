@@ -161,6 +161,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const directToCheckout = (product: Product, quantity: number, size?: string) => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      console.warn('User must be authenticated to proceed to checkout');
+      navigate('/login');
+      return;
+    }
+    
     // Create a temporary cart item for checkout
     const checkoutItem: CartItem = { product, quantity, size };
     

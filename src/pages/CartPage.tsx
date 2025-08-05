@@ -6,6 +6,7 @@ import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Product } from '../types';
 import { baseurl } from './ProductsPage';
 import { formatPrice, formatINR, convertUSDToINR } from '../utils/currency';
+import { useAuth } from '../context/AuthContext';
 
 interface CartItem {
   product: Product;
@@ -17,30 +18,48 @@ const CartPage: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
 
   const navigate = useNavigate();
+
+  // Handle checkout with authentication check
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      toast.info('Please log in to proceed with checkout');
+      navigate('/login');
+      return;
+    }
+    navigate('/checkout');
+  };
 
   // Fetch cart data from the backend
   const fetchCart = () => {
     setLoading(true);
     setError(null);
 
-    const token = localStorage.getItem('token');
-    fetch(`${baseurl}/api/cart`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load cart');
-        return res.json();
+    if (isAuthenticated) {
+      const token = localStorage.getItem('token');
+      fetch(`${baseurl}/api/cart`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
-      .then((data: { items: CartItem[] }) => {
-        setCartItems(data.items); // Update the cart items state
-      })
-      .catch((err) => {
-        console.error('Cart fetch error:', err);
-        setError(err.message); // Set error state in case of failure
-      })
-      .finally(() => setLoading(false)); // Stop loading state
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to load cart');
+          return res.json();
+        })
+        .then((data: { items: CartItem[] }) => {
+          setCartItems(data.items); // Update the cart items state
+        })
+        .catch((err) => {
+          console.error('Cart fetch error:', err);
+          setError(err.message); // Set error state in case of failure
+        })
+        .finally(() => setLoading(false)); // Stop loading state
+    } else {
+      // Handle guest users by loading cart from localStorage
+      const localCart = localStorage.getItem('cart');
+      setCartItems(localCart ? JSON.parse(localCart) : []);
+      setLoading(false);
+    }
   };
 
   // Run fetchCart once the component mounts
@@ -52,39 +71,78 @@ const CartPage: React.FC = () => {
   const updateQuantity = (productId: string, qty: number) => {
     if (qty < 1) return;
 
-    fetch(`/api/cart/${productId}/quantity`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity: qty }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to update quantity');
-        return res.json();
+    if (isAuthenticated) {
+      fetch(`${baseurl}/api/cart/${productId}/quantity`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ quantity: qty }),
       })
-      .then(fetchCart) // Re-fetch cart after successful update
-      .catch((err) => setError(err.message)); // Handle error
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to update quantity');
+          return res.json();
+        })
+        .then(fetchCart) // Re-fetch cart after successful update
+        .catch((err) => setError(err.message)); // Handle error
+    } else {
+      // Handle guest users - update localStorage
+      const updatedItems = cartItems.map(item => 
+        (item.product._id || item.product.id) === productId 
+          ? { ...item, quantity: qty }
+          : item
+      );
+      setCartItems(updatedItems);
+      localStorage.setItem('cart', JSON.stringify(updatedItems));
+    }
   };
 
   // Remove an item from the cart
   const removeFromCart = (productId: string) => {
-    fetch(`/api/cart/${productId}`, { method: 'DELETE' })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to remove item');
-        return res.json();
+    if (isAuthenticated) {
+      fetch(`${baseurl}/api/cart/${productId}`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
-      .then(fetchCart) // Re-fetch cart after successful removal
-      .catch((err) => setError(err.message)); // Handle error
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to remove item');
+          return res.json();
+        })
+        .then(fetchCart) // Re-fetch cart after successful removal
+        .catch((err) => setError(err.message)); // Handle error
+    } else {
+      // Handle guest users - remove from localStorage
+      const updatedItems = cartItems.filter(item => 
+        (item.product._id || item.product.id) !== productId
+      );
+      setCartItems(updatedItems);
+      localStorage.setItem('cart', JSON.stringify(updatedItems));
+    }
   };
 
   // Clear the entire cart
   const clearCart = () => {
-    fetch('/api/cart', { method: 'DELETE' })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to clear cart');
-        return res.json();
+    if (isAuthenticated) {
+      fetch(`${baseurl}/api/cart`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
-      .then(fetchCart) // Re-fetch cart after clearing
-      .catch((err) => setError(err.message)); // Handle error
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to clear cart');
+          return res.json();
+        })
+        .then(fetchCart) // Re-fetch cart after clearing
+        .catch((err) => setError(err.message)); // Handle error
+    } else {
+      // Handle guest users - clear localStorage
+      setCartItems([]);
+      localStorage.removeItem('cart');
+    }
   };
 
   // Calculate the total price (with tax and shipping)
@@ -217,7 +275,7 @@ const CartPage: React.FC = () => {
                   <p className="text-base font-medium text-gray-900">{formatINR(convertUSDToINR(total))}</p>
                 </div>
               </div>
-              <button type="button" className="mt-8 w-full bg-black text-white rounded-md py-3 hover:bg-gray-800" onClick={() => navigate('/checkout')}>
+              <button type="button" className="mt-8 w-full bg-black text-white rounded-md py-3 hover:bg-gray-800" onClick={handleCheckout}>
                 Checkout
               </button>
               <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over ₹{convertUSDToINR(100).toFixed(0)}</p>
