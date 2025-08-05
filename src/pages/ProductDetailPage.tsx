@@ -15,7 +15,8 @@ import { useCart } from '../context/CartContext';
 import { baseurl } from './ProductsPage';
 import { Product, Review } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { formatPrice, convertUSDToINR } from '../utils/currency';
+import { formatINR } from '../utils/currency';
+import ProductCard from '../components/ProductCard';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +35,11 @@ const ProductDetailPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const [reviewError, setReviewError] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [selectedColor, setSelectedColor] = useState('');
 
   const fallbackSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
@@ -56,6 +62,17 @@ const ProductDetailPage: React.FC = () => {
 
         setProduct(data);
         setSelectedSize(normalizedSizes[0] || 'M');
+        
+        // Set default color if colors are available
+        const normalizedColors = Array.isArray(data.colors) && data.colors.length > 0
+          ? data.colors
+          : typeof data.colors === 'string' && data.colors.trim()
+          ? data.colors.split(',').map(c => c.trim())
+          : [];
+        
+        if (normalizedColors.length > 0) {
+          setSelectedColor(normalizedColors[0]);
+        }
       } catch (err: any) {
         setError(err.message || 'Something went wrong');
       } finally {
@@ -74,12 +91,53 @@ const ProductDetailPage: React.FC = () => {
       .catch(() => setReviews([]));
   }, [id]);
 
+  // Fetch related products based on category
+  useEffect(() => {
+    if (!product?.category) return;
+    
+    const fetchRelatedProducts = async () => {
+      try {
+        const response = await fetch(`${baseurl}/api/products?category=${encodeURIComponent(product.category)}`);
+        if (response.ok) {
+          const allProducts: Product[] = await response.json();
+          // Filter out the current product and limit to 4 items
+          const filtered = allProducts
+            .filter(p => p._id !== product._id)
+            .slice(0, 4);
+          setRelatedProducts(filtered);
+        }
+      } catch (error) {
+        console.error('Error fetching related products:', error);
+      }
+    };
+    
+    fetchRelatedProducts();
+  }, [product]);
+
+  // Handle image zoom on mouse move
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPosition({ x, y });
+  };
+
+  // Handle image selection from thumbnails
+  const handleImageSelect = (index: number) => {
+    setSelectedImageIndex(index);
+  };
+
   const incrementQuantity = () => setQuantity((q) => q + 1);
   const decrementQuantity = () => setQuantity((q) => Math.max(1, q - 1));
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart(product, quantity, selectedSize);
+      // Include selected color in the cart item if colors are available
+      const cartProduct = {
+        ...product,
+        selectedColor: availableColors.length > 0 ? selectedColor : undefined
+      };
+      addToCart(cartProduct, quantity, selectedSize);
       toast.success('Product added to cart!');
     }
   };
@@ -93,7 +151,12 @@ const ProductDetailPage: React.FC = () => {
     }
     
     if (product) {
-      directToCheckout(product, quantity, selectedSize);
+      // Include selected color in the product for checkout if colors are available
+      const checkoutProduct = {
+        ...product,
+        selectedColor: availableColors.length > 0 ? selectedColor : undefined
+      };
+      directToCheckout(checkoutProduct, quantity, selectedSize);
     }
   };
 
@@ -178,8 +241,33 @@ const ProductDetailPage: React.FC = () => {
   const availableSizes = Array.isArray(product.sizes)
     ? product.sizes
     : typeof product.sizes === 'string'
-    ? [product.sizes]
+    ? product.sizes.split(',').map(s => s.trim())
     : fallbackSizes;
+
+  const availableColors = Array.isArray(product.colors) && product.colors.length > 0
+    ? product.colors
+    : typeof product.colors === 'string' && product.colors.trim()
+    ? product.colors.split(',').map(c => c.trim())
+    : [];
+
+  // Color name to display mapping
+  const getColorDisplay = (color: string) => {
+    const colorMap: { [key: string]: string } = {
+      'brown': '#8B4513',
+      'green': '#22C55E',
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'red': '#EF4444',
+      'blue': '#3B82F6',
+      'yellow': '#EAB308',
+      'gray': '#6B7280',
+      'grey': '#6B7280',
+      'pink': '#EC4899',
+      'purple': '#8B5CF6',
+      'orange': '#F97316'
+    };
+    return colorMap[color.toLowerCase()] || color;
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -187,22 +275,49 @@ const ProductDetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Images */}
           <div className="space-y-4">
-            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-              <img
-                src={images[0]}
-                alt={product.name}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
-                }}
-              />
+            {/* Main Image with Zoom */}
+            <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+              <div
+                className="w-full h-full cursor-zoom-in relative"
+                onMouseEnter={() => setIsZoomed(true)}
+                onMouseLeave={() => setIsZoomed(false)}
+                onMouseMove={handleMouseMove}
+              >
+                <img
+                  src={images[selectedImageIndex]}
+                  alt={product.name}
+                  className={`w-full h-full object-cover transition-transform duration-300 ${
+                    isZoomed ? 'scale-150' : 'scale-100'
+                  }`}
+                  style={{
+                    transformOrigin: isZoomed ? `${zoomPosition.x}% ${zoomPosition.y}%` : 'center'
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
+                  }}
+                />
+              </div>
+              {/* Zoom indicator */}
+              {isZoomed && (
+                <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                  Zoom enabled
+                </div>
+              )}
             </div>
+            
+            {/* Thumbnail Images */}
             <div className="grid grid-cols-4 gap-4">
               {images.slice(0, 4).map((img, index) => (
                 <div
                   key={index}
-                  className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
+                  className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-200 ${
+                    selectedImageIndex === index
+                      ? 'border-black shadow-md'
+                      : 'border-transparent hover:border-gray-300'
+                  }`}
+                  onClick={() => handleImageSelect(index)}
+                  onMouseEnter={() => handleImageSelect(index)}
                 >
                   <img
                     src={img}
@@ -240,7 +355,7 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <span className="text-3xl font-bold text-gray-900">{formatPrice(product.price)}</span>
+                <span className="text-3xl font-bold text-gray-900">{formatINR(product.price)}</span>
               </div>
             </div>
 
@@ -251,21 +366,62 @@ const ProductDetailPage: React.FC = () => {
               </p>
             </div>
 
+            {/* Color Selection */}
+            {availableColors.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">
+                  Color: <span className="capitalize font-bold">{selectedColor}</span>
+                </h3>
+                <div className="flex items-center space-x-3">
+                  {availableColors.map((color) => {
+                    const colorValue = getColorDisplay(color);
+                    const isSelected = selectedColor === color;
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
+                          isSelected
+                            ? 'border-gray-800 scale-110 shadow-lg'
+                            : 'border-gray-300 hover:border-gray-500'
+                        }`}
+                        style={{
+                          backgroundColor: colorValue.startsWith('#') ? colorValue : color,
+                          border: color.toLowerCase() === 'white' ? '2px solid #e5e7eb' : undefined
+                        }}
+                        title={color}
+                      >
+                        {isSelected && (
+                          <div className="w-full h-full rounded-full flex items-center justify-center">
+                            <div className={`w-2 h-2 rounded-full ${
+                              color.toLowerCase() === 'white' || color.toLowerCase() === 'yellow'
+                                ? 'bg-gray-800'
+                                : 'bg-white'
+                            }`} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Size Selection */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-3">Size</h3>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="flex items-center space-x-2 flex-wrap gap-2">
                 {availableSizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`py-2 px-3 border rounded-md text-sm font-medium transition-colors ${
+                    className={`w-12 h-12 border text-sm font-medium transition-all duration-200 rounded-md ${
                       selectedSize === size
-                        ? 'border-black bg-black text-white'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                        ? 'border-gray-800 bg-gray-800 text-white shadow-md'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-800 hover:bg-gray-50'
                     }`}
                   >
-                    {size}
+                    {size.toUpperCase()}
                   </button>
                 ))}
               </div>
@@ -324,7 +480,7 @@ const ProductDetailPage: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <Truck className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm text-gray-600">Free shipping on orders over ₹{convertUSDToINR(100).toFixed(0)}</span>
+                  <span className="text-sm text-gray-600">Free shipping on orders over ₹2000</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <RotateCcw className="w-5 h-5 text-gray-600" />
@@ -379,6 +535,24 @@ const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* You may also like section */}
+      {relatedProducts.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="border-t border-gray-200 pt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+              You may also like
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {relatedProducts.map((relatedProduct) => (
+                <div key={relatedProduct._id} className="group">
+                  <ProductCard product={relatedProduct} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

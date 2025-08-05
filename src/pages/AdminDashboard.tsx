@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../config/axios';
 import {
-  Users, ShoppingBag, TrendingUp, Eye, Edit, Trash2,
+  Users, ShoppingBag, TrendingUp, Eye, Edit, Trash2, Sliders,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 import { formatINR, convertUSDToINR } from '../utils/currency';
+import AdminHeroSlider from './AdminHeroSlider';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products' | 'hero-slider'>('overview');
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -78,6 +79,7 @@ const AdminDashboard: React.FC = () => {
               { id: 'orders', name: 'Orders', icon: ShoppingBag },
               { id: 'users', name: 'Users', icon: Users },
               { id: 'products', name: 'Products', icon: ShoppingBag },
+              { id: 'hero-slider', name: 'Hero Slider', icon: Sliders },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -144,6 +146,9 @@ const AdminDashboard: React.FC = () => {
 
         {/* Products Tab */}
         {activeTab === 'products' && Array.isArray(products) && token && <ProductTable products={products} setProducts={setProducts} token={token} />}
+        
+        {/* Hero Slider Tab */}
+        {activeTab === 'hero-slider' && <AdminHeroSlider />}
       </div>
     </div>
   );
@@ -350,10 +355,28 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
   if (!Array.isArray(products)) return <div>No products data.</div>;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
-  const [newProduct, setNewProduct] = useState<any>({ name: '', price: '', stock: '', category: '', description: '', images: [''] });
+  const [newProduct, setNewProduct] = useState<any>({ 
+    name: '', 
+    price: '', 
+    stock: '', 
+    category: '', 
+    description: '', 
+    images: [''],
+    sizes: [],
+    colors: [],
+    featured: false,
+    new: false
+  });
   const handleEdit = (product: any) => {
     setEditingId(product._id);
-    setEditForm({ ...product, images: product.images || [''] });
+    setEditForm({ 
+      ...product, 
+      images: product.images || [''],
+      sizes: Array.isArray(product.sizes) ? product.sizes : 
+             typeof product.sizes === 'string' ? product.sizes.split(',').map(s => s.trim()) : [],
+      colors: Array.isArray(product.colors) ? product.colors : 
+              typeof product.colors === 'string' ? product.colors.split(',').map(c => c.trim()) : []
+    });
   };
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
@@ -386,8 +409,15 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
     }
   };
   const handleEditSave = async () => {
-    await api.put(`/api/products/${editingId}`, editForm);
-    setProducts(products.map(p => (p._id === editingId ? { ...p, ...editForm } : p)));
+    const updateData = {
+      ...editForm,
+      sizes: editForm.sizes.length > 0 ? editForm.sizes.join(',') : '',
+      colors: editForm.colors.length > 0 ? editForm.colors.join(',') : '',
+      price: parseFloat(editForm.price) || 0,
+      stock: parseInt(editForm.stock) || 0
+    };
+    await api.put(`/api/products/${editingId}`, updateData);
+    setProducts(products.map(p => (p._id === editingId ? { ...p, ...updateData } : p)));
     setEditingId(null);
   };
   const handleDelete = async (id: string) => {
@@ -397,14 +427,46 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
   const handleNewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewProduct({ ...newProduct, [e.target.name]: e.target.value });
   };
+  // Handle size/color changes
+  const handleSizeChange = (sizes: string[], isEdit: boolean = false) => {
+    if (isEdit) {
+      setEditForm({ ...editForm, sizes });
+    } else {
+      setNewProduct({ ...newProduct, sizes });
+    }
+  };
+
+  const handleColorChange = (colors: string[], isEdit: boolean = false) => {
+    if (isEdit) {
+      setEditForm({ ...editForm, colors });
+    } else {
+      setNewProduct({ ...newProduct, colors });
+    }
+  };
+
   const handleAdd = async () => {
     const productData = {
       ...newProduct,
-      images: newProduct.images.filter((img: string) => img.trim() !== '')
+      images: newProduct.images.filter((img: string) => img.trim() !== ''),
+      sizes: newProduct.sizes.length > 0 ? newProduct.sizes.join(',') : '',
+      colors: newProduct.colors.length > 0 ? newProduct.colors.join(',') : '',
+      price: parseFloat(newProduct.price) || 0,
+      stock: parseInt(newProduct.stock) || 0
     };
     const res = await api.post('/api/products', productData);
     setProducts([...products, res.data]);
-    setNewProduct({ name: '', price: '', stock: '', category: '', description: '', images: [''] });
+    setNewProduct({ 
+      name: '', 
+      price: '', 
+      stock: '', 
+      category: '', 
+      description: '', 
+      images: [''],
+      sizes: [],
+      colors: [],
+      featured: false,
+      new: false
+    });
   };
   return (
     <div>
@@ -417,6 +479,8 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
             <th className="px-4 py-2 border">Price</th>
             <th className="px-4 py-2 border">Stock</th>
             <th className="px-4 py-2 border">Category</th>
+            <th className="px-4 py-2 border">Sizes</th>
+            <th className="px-4 py-2 border">Colors</th>
             <th className="px-4 py-2 border">Actions</th>
           </tr>
         </thead>
@@ -520,6 +584,38 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
               </td>
               <td className="border px-4 py-2">
                 {editingId === product._id ? (
+                  <SizeSelector 
+                    selectedSizes={editForm.sizes || []} 
+                    onChange={(sizes) => handleSizeChange(sizes, true)} 
+                  />
+                ) : (
+                  <div className="text-xs">
+                    {Array.isArray(product.sizes) 
+                      ? product.sizes.join(', ') 
+                      : typeof product.sizes === 'string' && product.sizes 
+                      ? product.sizes 
+                      : 'No sizes'}
+                  </div>
+                )}
+              </td>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
+                  <ColorSelector 
+                    selectedColors={editForm.colors || []} 
+                    onChange={(colors) => handleColorChange(colors, true)} 
+                  />
+                ) : (
+                  <div className="text-xs">
+                    {Array.isArray(product.colors) 
+                      ? product.colors.join(', ') 
+                      : typeof product.colors === 'string' && product.colors 
+                      ? product.colors 
+                      : 'No colors'}
+                  </div>
+                )}
+              </td>
+              <td className="border px-4 py-2">
+                {editingId === product._id ? (
                   <>
                     <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
                     <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
@@ -576,11 +672,149 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
               <input name="category" value={newProduct.category} onChange={handleNewChange} className="border px-2 py-1" placeholder="Category" />
             </td>
             <td className="border px-4 py-2">
+              <SizeSelector 
+                selectedSizes={newProduct.sizes || []} 
+                onChange={(sizes) => handleSizeChange(sizes, false)} 
+              />
+            </td>
+            <td className="border px-4 py-2">
+              <ColorSelector 
+                selectedColors={newProduct.colors || []} 
+                onChange={(colors) => handleColorChange(colors, false)} 
+              />
+            </td>
+            <td className="border px-4 py-2">
               <button onClick={handleAdd} className="text-green-600">Add</button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  );
+};
+
+// Size Selector Component
+const SizeSelector: React.FC<{ selectedSizes: string[]; onChange: (sizes: string[]) => void }> = ({ selectedSizes, onChange }) => {
+  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '28', '30', '32', '34', '36', '38', '40', '42'];
+
+  const toggleSize = (size: string) => {
+    if (selectedSizes.includes(size)) {
+      onChange(selectedSizes.filter(s => s !== size));
+    } else {
+      onChange([...selectedSizes, size]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1">
+        {availableSizes.map(size => (
+          <button
+            key={size}
+            type="button"
+            onClick={() => toggleSize(size)}
+            className={`px-2 py-1 text-xs border rounded ${
+              selectedSizes.includes(size)
+                ? 'bg-gray-800 text-white border-gray-800'
+                : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            {size}
+          </button>
+        ))}
+      </div>
+      {selectedSizes.length > 0 && (
+        <div className="text-xs text-gray-600">
+          Selected: {selectedSizes.join(', ')}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Color Selector Component
+const ColorSelector: React.FC<{ selectedColors: string[]; onChange: (colors: string[]) => void }> = ({ selectedColors, onChange }) => {
+  const availableColors = [
+    { name: 'Black', value: 'black' },
+    { name: 'White', value: 'white' },
+    { name: 'Red', value: 'red' },
+    { name: 'Blue', value: 'blue' },
+    { name: 'Green', value: 'green' },
+    { name: 'Yellow', value: 'yellow' },
+    { name: 'Purple', value: 'purple' },
+    { name: 'Pink', value: 'pink' },
+    { name: 'Orange', value: 'orange' },
+    { name: 'Brown', value: 'brown' },
+    { name: 'Gray', value: 'gray' },
+    { name: 'Navy', value: 'navy' }
+  ];
+
+  const getColorDisplay = (color: string) => {
+    const colorMap: { [key: string]: string } = {
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'red': '#EF4444',
+      'blue': '#3B82F6',
+      'green': '#22C55E',
+      'yellow': '#EAB308',
+      'purple': '#8B5CF6',
+      'pink': '#EC4899',
+      'orange': '#F97316',
+      'brown': '#8B4513',
+      'gray': '#6B7280',
+      'navy': '#1E3A8A'
+    };
+    return colorMap[color] || color;
+  };
+
+  const toggleColor = (color: string) => {
+    if (selectedColors.includes(color)) {
+      onChange(selectedColors.filter(c => c !== color));
+    } else {
+      onChange([...selectedColors, color]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1">
+        {availableColors.map(({ name, value }) => {
+          const isSelected = selectedColors.includes(value);
+          const colorHex = getColorDisplay(value);
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggleColor(value)}
+              className={`w-6 h-6 rounded-full border-2 transition-all ${
+                isSelected
+                  ? 'border-gray-800 scale-110 shadow-md'
+                  : 'border-gray-300 hover:border-gray-500'
+              }`}
+              style={{
+                backgroundColor: colorHex,
+                border: value === 'white' ? '2px solid #e5e7eb' : undefined
+              }}
+              title={name}
+            >
+              {isSelected && (
+                <div className="w-full h-full rounded-full flex items-center justify-center">
+                  <div className={`w-2 h-2 rounded-full ${
+                    value === 'white' || value === 'yellow'
+                      ? 'bg-gray-800'
+                      : 'bg-white'
+                  }`} />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {selectedColors.length > 0 && (
+        <div className="text-xs text-gray-600">
+          Selected: {selectedColors.join(', ')}
+        </div>
+      )}
     </div>
   );
 };

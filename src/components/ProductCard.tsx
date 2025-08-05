@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '../types';
-import { formatPrice } from '../utils/currency';
+import { formatINR } from '../utils/currency';
 
 interface ProductCardProps {
   product: Product;
@@ -37,7 +37,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         )}
       </div>
       <h3 className="mt-4 text-sm text-gray-700">{product.name}</h3>
-      <p className="mt-1 text-lg font-medium text-gray-900">{formatPrice(product.price)}</p>
+      <p className="mt-1 text-lg font-medium text-gray-900">{formatINR(product.price)}</p>
     </Link>
   );
 };

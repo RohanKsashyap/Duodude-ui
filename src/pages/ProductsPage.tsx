@@ -180,7 +180,7 @@ const ProductsPage: React.FC = () => {
                 <p className="text-gray-500">No products found matching your criteria.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 gap-x-6 lg:grid-cols-3 xl:gap-x-8">
+              <div className="grid grid-cols-2 gap-y-10 sm:grid-cols-2 gap-x-6 lg:grid-cols-3 xl:gap-x-8">
                 {filteredProducts.map(product => (
                   <ProductCard key={product._id || product.id} product={product} />
                 ))}
