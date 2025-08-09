@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axios';
-import { formatINR, convertUSDToINR } from '../utils/currency';
+import { formatINR } from '../utils/currency';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 import OptimizedImage from '../components/OptimizedImage';
 import { toast } from 'react-toastify';
@@ -122,7 +122,7 @@ const OrdersPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-gray-700">{formatINR(convertUSDToINR(order.total))}</p>
+                  <p className="font-semibold text-gray-700">{formatINR(order.total)}</p>
                   <p
                     className={`text-sm font-medium ${
                       order.status === 'delivered'
@@ -154,7 +154,7 @@ const OrdersPage: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right text-gray-700 font-semibold">
-                      {formatINR(convertUSDToINR(item.product.price))}
+                      {formatINR(item.product.price)}
                     </div>
                   </div>
                 ))}

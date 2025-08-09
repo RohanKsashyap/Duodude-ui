@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Product } from '../types';
 import { baseurl } from './ProductsPage';
-import { formatPrice, formatINR, convertUSDToINR } from '../utils/currency';
+import { formatINR } from '../utils/currency';
 import { useAuth } from '../context/AuthContext';
 
 interface CartItem {
@@ -150,8 +150,10 @@ const CartPage: React.FC = () => {
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
-  const shipping = subtotal > 100 ? 0 : 10; // Free shipping if over $100
-  const tax = subtotal * 0.08; // 8% tax
+  const shipping = subtotal > 2000 ? 0 : 100; // Free shipping if over ₹2000
+  // Dynamic tax: 5% for orders below ₹1000, 12% for orders ₹1000 and above
+  const taxRate = subtotal < 1000 ? 0.05 : 0.12;
+  const tax = subtotal * taxRate;
   const total = subtotal + shipping + tax; // Total price
 
   // Display loading or error states
@@ -202,7 +204,7 @@ const CartPage: React.FC = () => {
                           </Link>
                         </h4>
                         <p className="ml-4 text-sm font-medium text-gray-900">
-                          {formatINR(convertUSDToINR(item.product.price * item.quantity))}
+                          {formatINR(item.product.price * item.quantity)}
                         </p>
                       </div>
                       {item.product.colors && (
@@ -266,19 +268,19 @@ const CartPage: React.FC = () => {
                   <div key={label as string} className="flex items-center justify-between">
                     <p className="text-sm text-gray-600">{label}</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {label === 'Shipping' && shipping === 0 ? 'Free' : formatINR(convertUSDToINR(amt as number))}
+                      {label === 'Shipping' && shipping === 0 ? 'Free' : formatINR(amt as number)}
                     </p>
                   </div>
                 ))}
                 <div className="border-t border-gray-200 pt-4 flex items-center justify-between">
                   <p className="text-base font-medium text-gray-900">Order total</p>
-                  <p className="text-base font-medium text-gray-900">{formatINR(convertUSDToINR(total))}</p>
+                  <p className="text-base font-medium text-gray-900">{formatINR(total)}</p>
                 </div>
               </div>
               <button type="button" className="mt-8 w-full bg-black text-white rounded-md py-3 hover:bg-gray-800" onClick={handleCheckout}>
                 Checkout
               </button>
-              <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over ₹{convertUSDToINR(100).toFixed(0)}</p>
+              <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over ₹2000</p>
             </div>
           </div>
         </div>

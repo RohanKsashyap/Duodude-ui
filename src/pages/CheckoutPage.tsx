@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Edit2, Plus, MapPin } from 'lucide-react';
 import api from '../config/axios';
 import { baseurl } from './ProductsPage';
-import { formatINR, convertUSDToINR } from '../utils/currency';
+import { formatINR } from '../utils/currency';
 
 interface Address {
   name: string;
@@ -36,8 +36,10 @@ const CheckoutPage: React.FC = () => {
 
   const items = directItem ? [directItem] : cartItems;
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shipping = subtotal > 100 ? 0 : 10;
-  const tax = subtotal * 0.08;
+  const shipping = subtotal > 2000 ? 0 : 100; // Free shipping if order is over ₹2000, otherwise ₹100
+  // Dynamic tax: 5% for orders below ₹1000, 12% for orders ₹1000 and above
+  const taxRate = subtotal < 1000 ? 0.05 : 0.12;
+  const tax = subtotal * taxRate;
   const total = subtotal + shipping + tax;
 
   useEffect(() => {
@@ -124,7 +126,7 @@ const CheckoutPage: React.FC = () => {
           quantity: item.quantity,
           size: item.size,
         })),
-        total: parseFloat(total.toFixed(2)),
+        total: parseFloat(total.toFixed(2)), // Send INR amount to backend
         shippingAddress: {
           name: address.name.trim(),
           street: address.street.trim(),
@@ -280,14 +282,14 @@ const CheckoutPage: React.FC = () => {
             {items.map((item, idx) => (
               <li key={idx} className="flex justify-between text-sm">
                 <span>{item.product.name} x {item.quantity}</span>
-                <span>{formatINR(convertUSDToINR(item.product.price * item.quantity))}</span>
+                <span>{formatINR(item.product.price * item.quantity)}</span>
               </li>
             ))}
           </ul>
-          <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatINR(convertUSDToINR(subtotal))}</span></div>
-          <div className="flex justify-between text-sm"><span>Shipping</span><span>{shipping === 0 ? 'Free' : formatINR(convertUSDToINR(shipping))}</span></div>
-          <div className="flex justify-between text-sm"><span>Tax</span><span>{formatINR(convertUSDToINR(tax))}</span></div>
-          <div className="flex justify-between font-bold text-base mt-2"><span>Total</span><span>{formatINR(convertUSDToINR(total))}</span></div>
+          <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatINR(subtotal)}</span></div>
+          <div className="flex justify-between text-sm"><span>Shipping</span><span>{shipping === 0 ? 'Free' : formatINR(shipping)}</span></div>
+          <div className="flex justify-between text-sm"><span>Tax</span><span>{formatINR(tax)}</span></div>
+          <div className="flex justify-between font-bold text-base mt-2"><span>Total</span><span>{formatINR(total)}</span></div>
         </div>
         <button
           className="w-full bg-black text-white py-3 rounded font-semibold"
