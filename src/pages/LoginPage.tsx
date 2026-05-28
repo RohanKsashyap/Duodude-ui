@@ -66,8 +66,8 @@ const LoginPage: React.FC = () => {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Or{' '}
-          <Link to="/signup" className="font-medium text-black hover:text-gray-800">
-            create a new account
+          <Link to="/signup" className="font-medium text-black hover:text-gray-800 underline ">
+            create a new account 
           </Link>
         </p>
       </div>

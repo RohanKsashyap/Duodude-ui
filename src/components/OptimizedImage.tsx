@@ -1,5 +1,4 @@
-import React, { memo, useState, useCallback, useEffect } from 'react';
-import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
+import { memo, useState, useCallback } from 'react';
 
 interface OptimizedImageProps {
   src: string;
@@ -11,48 +10,31 @@ interface OptimizedImageProps {
   height?: number;
 }
 
-const OptimizedImage = memo(({ 
-  src, 
-  alt, 
-  className = '', 
-  fallbackSrc = '/api/placeholder/64/64',
+const OptimizedImage = memo(({
+  src,
+  alt,
+  className = '',
+  fallbackSrc = '/placeholder.png',
   loading = 'lazy',
   width,
   height
 }: OptimizedImageProps) => {
-  const { elementRef, isIntersecting } = useIntersectionObserver();
   const [imgSrc, setImgSrc] = useState(src);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  
+
   const handleError = useCallback(() => {
-    if (!hasError) {
-      setImgSrc(fallbackSrc);
-      setHasError(true);
-    }
+    setImgSrc(fallbackSrc);
     setIsLoading(false);
-  }, [fallbackSrc, hasError]);
-  
+  }, [fallbackSrc]);
+
   const handleLoad = useCallback(() => {
     setIsLoading(false);
-    setHasError(false);
   }, []);
-  
-  useEffect(() => {
-    // Only load image when it enters viewport for the first time
-    if (loading === 'eager' || isIntersecting) {
-      if (src !== imgSrc && !hasError) {
-        setImgSrc(src);
-        setIsLoading(true);
-        setHasError(false);
-      }
-    }
-  }, [src, isIntersecting, loading, imgSrc, hasError]);
-  
+
   return (
-    <div ref={elementRef} className={`relative ${isLoading ? 'bg-gray-200 animate-pulse' : ''}`}>
+    <div className={`relative ${isLoading ? 'bg-gray-200 animate-pulse' : ''}`}>
       <img
-        src={imgSrc}
+        src={imgSrc || fallbackSrc}
         alt={alt}
         className={className}
         onError={handleError}

@@ -11,6 +11,7 @@ interface OrderItem {
   product: {
     name: string;
     price: number;
+    image?:string
     images: string[];
   };
   quantity: number;
@@ -140,13 +141,13 @@ const OrdersPage: React.FC = () => {
               <div className="divide-y divide-gray-100 mt-4">
                 {order.items.map((item, index) => (
                   <div key={index} className="flex items-center py-3">
-                    <OptimizedImage
-                      src={item.product.images && item.product.images.length > 0 ? item.product.images[0] : '/api/placeholder/64/64'}
-                      alt={item.product.name}
-                      className="w-16 h-16 object-cover rounded mr-4"
-                      width={64}
-                      height={64}
-                    />
+                 <OptimizedImage
+  src={item.product.image}
+  alt={item.product.name}
+  className="w-16 h-16 object-cover rounded mr-4"
+  width={64}
+  height={64}
+/>
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{item.product.name}</p>
                       <p className="text-sm text-gray-500">

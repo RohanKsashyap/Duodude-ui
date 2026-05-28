@@ -210,7 +210,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, isOpen, on
         </div>
 
 {/* Action Buttons */}
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 mb-2 ">
           {order.status !== 'delivered' && order.status !== 'cancelled' && (
             <button
               onClick={() => {
