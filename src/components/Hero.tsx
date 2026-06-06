@@ -22,6 +22,7 @@ const Hero: React.FC = () => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [slowLoad, setSlowLoad] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -30,12 +31,17 @@ const Hero: React.FC = () => {
     const fetchSlides = async () => {
       try {
         setLoading(true);
+        // Show a "waking up" hint if it takes longer than 4s (Render cold start)
+        const slowTimer = setTimeout(() => setSlowLoad(true), 4000);
         const response = await api.get('/api/hero-slides');
+        clearTimeout(slowTimer);
+        setSlowLoad(false);
         setSlides(response.data);
       } catch (error) {
         console.error('Failed to fetch slides:', error);
       } finally {
         setLoading(false);
+        setSlowLoad(false);
       }
     };
     fetchSlides();
@@ -105,10 +111,14 @@ const Hero: React.FC = () => {
         </div>
         <div className='relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8'>
           <h1 className='text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl'>
-            {loading ? 'Loading...' : 'ELEGANCE'}
+            {loading ? (slowLoad ? 'Waking up server...' : 'Loading...') : 'ELEGANCE'}
           </h1>
           <p className='mt-6 text-xl text-white max-w-3xl'>
-            {loading ? '' : 'Timeless style for the modern individual. Our new collection blends contemporary design with sustainable craftsmanship.'}
+            {loading
+              ? slowLoad
+                ? 'The server is starting up, this may take a moment. Hang tight!'
+                : ''
+              : 'Timeless style for the modern individual. Our new collection blends contemporary design with sustainable craftsmanship.'}
           </p>
           <div className='mt-10 flex space-x-4'>
             <Link

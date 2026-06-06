@@ -23,7 +23,7 @@ import 'react-toastify/dist/ReactToastify.css';
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CartProvider>
           <div className="flex flex-col min-h-screen">
             <Navbar />
