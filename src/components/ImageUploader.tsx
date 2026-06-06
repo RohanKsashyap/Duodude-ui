@@ -71,7 +71,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       <div className="flex items-center gap-2">
         {/* URL text input — admin can still paste a URL manually */}
         <input
-          type="url"
+          type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
