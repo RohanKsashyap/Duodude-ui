@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Edit2, Trash2, Plus, Eye, EyeOff, ChevronUp, ChevronDown, Save, X } from 'lucide-react';
 import api from '../config/axios';
+import ImageUploader from '../components/ImageUploader';
 
 interface Slide {
   _id: string;
@@ -230,8 +231,14 @@ const AdminHeroSlider: React.FC = () => {
                 <textarea name='description' value={formData.description} onChange={handleInputChange} className='w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500' rows={3}></textarea>
               </div>
               <div className='col-span-1 md:col-span-2'>
-                <label htmlFor='image' className='block text-sm font-medium mb-1'>Image URL</label>
-                <input type='text' name='image' value={formData.image} onChange={handleInputChange} className='w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500' required />
+                <label htmlFor='image' className='block text-sm font-medium mb-1'>Image</label>
+                <ImageUploader
+                  value={formData.image}
+                  onChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
+                  folder='/duodude/slides'
+                  placeholder='https://ik.imagekit.io/rohanKashyap/...'
+                  dark
+                />
               </div>
               <div className='col-span-1'>
                 <label htmlFor='buttonText' className='block text-sm font-medium mb-1'>Button Text</label>

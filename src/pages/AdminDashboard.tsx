@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 import { formatINR } from '../utils/currency';
 import AdminHeroSlider from './AdminHeroSlider';
+import ImageUploader from '../components/ImageUploader';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products' | 'hero-slider'>('overview');
@@ -491,18 +492,17 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
                 {editingId === product._id ? (
                   <div className="space-y-2">
                     {(editForm.images || ['']).map((img: string, index: number) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <input
-                          type="url"
+                      <div key={index} className="flex flex-col gap-1">
+                        <ImageUploader
                           value={img}
-                          onChange={(e) => handleImageChange(index, e.target.value, true)}
-                          className="border px-2 py-1 text-xs w-32"
-                          placeholder="Image URL"
+                          onChange={(url) => handleImageChange(index, url, true)}
+                          folder='/duodude/products'
+                          placeholder='Image URL'
                         />
                         {editForm.images.length > 1 && (
                           <button
                             onClick={() => removeImageField(index, true)}
-                            className="text-red-500 text-xs"
+                            className="text-red-500 text-xs self-start"
                           >
                             Remove
                           </button>
@@ -633,18 +633,17 @@ const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void;
             <td className="border px-4 py-2">
               <div className="space-y-2">
                 {(newProduct.images || ['']).map((img: string, index: number) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <input
-                      type="url"
+                  <div key={index} className="flex flex-col gap-1">
+                    <ImageUploader
                       value={img}
-                      onChange={(e) => handleImageChange(index, e.target.value, false)}
-                      className="border px-2 py-1 text-xs w-32"
-                      placeholder="Image URL"
+                      onChange={(url) => handleImageChange(index, url, false)}
+                      folder='/duodude/products'
+                      placeholder='Image URL'
                     />
                     {newProduct.images.length > 1 && (
                       <button
                         onClick={() => removeImageField(index, false)}
-                        className="text-red-500 text-xs"
+                        className="text-red-500 text-xs self-start"
                       >
                         Remove
                       </button>
