@@ -201,7 +201,7 @@ const AdminHeroSlider: React.FC = () => {
 
   return (
     <div className='container mx-auto p-4 text-white'>
-      <h1 className='text-3xl font-bold mb-6'>Manage Hero Slides</h1>
+      <h1 className='text-3xl text-black font-bold mb-6'>Manage Hero Slides</h1>
 
       {!showForm ? (
         <button onClick={openForm} className='mb-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded inline-flex items-center'>

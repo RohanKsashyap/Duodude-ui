@@ -32,10 +32,11 @@ const CheckoutPage: React.FC = () => {
   // Handling direct checkout item
   const location = useLocation();
   const query = new URLSearchParams(location.search);
-  const directItem = query.get('direct') === 'true' ? JSON.parse(sessionStorage.getItem('directCheckoutItem') || '{}') : null;
+  const parsedDirect = query.get('direct') === 'true' ? JSON.parse(sessionStorage.getItem('directCheckoutItem') || '{}') : null;
+  const directItem = parsedDirect?.product ? parsedDirect : null;
 
   const items = directItem ? [directItem] : cartItems;
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = items.reduce((sum, item) => sum + (item.product?.price ?? 0) * item.quantity, 0);
   const shipping = subtotal > 2000 ? 0 : 100; // Free shipping if order is over ₹2000, otherwise ₹100
   // Dynamic tax: 5% for orders below ₹1000, 12% for orders ₹1000 and above
   const taxRate = subtotal < 1000 ? 0.05 : 0.12;
