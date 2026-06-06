@@ -1,31 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
 import {
-  Users, ShoppingBag, TrendingUp, Eye, Edit, Trash2, Sliders,
+  LayoutDashboard, ShoppingBag, Users, Package, Sliders, LogOut, Menu, X, Tag,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import OrderDetailsModal from '../components/OrderDetailsModal';
-import { formatINR } from '../utils/currency';
+import api from '../config/axios';
+
+import AdminOverview from './admin/AdminOverview';
+import AdminOrdersTab from './admin/AdminOrdersTab';
+import AdminUsersTab from './admin/AdminUsersTab';
+import AdminProductsTab from './admin/AdminProductsTab';
 import AdminHeroSlider from './AdminHeroSlider';
-import ImageUploader from '../components/ImageUploader';
+import AdminCategoriesTab from './admin/AdminCategoriesTab';
+
+type Tab = 'overview' | 'orders' | 'users' | 'products' | 'hero-slider' | 'categories';
+
+const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'overview', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+  { id: 'products', label: 'Products', icon: <Package size={18} /> },
+  { id: 'categories', label: 'Categories', icon: <Tag size={18} /> },
+  { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} /> },
+  { id: 'users', label: 'Customers', icon: <Users size={18} /> },
+  { id: 'hero-slider', label: 'Hero Slider', icon: <Sliders size={18} /> },
+];
+
+const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
+  overview: { title: 'Dashboard', subtitle: 'Welcome back, Admin' },
+  orders: { title: 'Orders', subtitle: 'Manage customer orders' },
+  users: { title: 'Customers', subtitle: 'View and manage users' },
+  products: { title: 'Products', subtitle: 'Manage your catalog' },
+  categories: { title: 'Categories', subtitle: 'Manage product categories' },
+  'hero-slider': { title: 'Hero Slider', subtitle: 'Edit homepage slides' },
+};
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'users' | 'products' | 'hero-slider'>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<any>(null);
-  const { token, user } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  const { token, user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!token || user?.role !== 'admin') {
-        return navigate('/');
-      }
-
+    if (!token || user?.role !== 'admin') { navigate('/'); return; }
+    const load = async () => {
       try {
         const [ordersRes, usersRes, productsRes, analyticsRes] = await Promise.all([
           api.get('/api/orders'),
@@ -43,776 +65,163 @@ const AdminDashboard: React.FC = () => {
         setLoading(false);
       }
     };
-
-    fetchDashboardData();
+    load();
   }, [token, user, navigate]);
 
-  const totalRevenue = Array.isArray(orders) ? orders.reduce((acc, order) => acc + order.total, 0) : 0;
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'shipped': return 'bg-blue-100 text-blue-800';
-      case 'processing': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as Tab);
+    setSidebarOpen(false);
   };
 
-  if (loading) return <div className="p-8 text-center">Loading dashboard...</div>;
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { title, subtitle } = TAB_TITLES[activeTab];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-600">Manage your store, orders, and users</p>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed top-0 left-0 h-full w-64 bg-black text-white flex flex-col z-30 transform transition-transform duration-300
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:static lg:translate-x-0 lg:z-auto
+        `}
+      >
+        {/* Logo area */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <img
+              src="https://ik.imagekit.io/rohanKashyap/Duodude_images/logo/duodudelogo.png?updatedAt=1753712339931"
+              alt="DuoDude"
+              className="h-10 w-auto invert"
+            />
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 hover:bg-white/10 rounded-lg"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Nav Tabs */}
-        <div className="border-b mb-6">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { id: 'overview', name: 'Overview', icon: TrendingUp },
-              { id: 'orders', name: 'Orders', icon: ShoppingBag },
-              { id: 'users', name: 'Users', icon: Users },
-              { id: 'products', name: 'Products', icon: ShoppingBag },
-              { id: 'hero-slider', name: 'Hero Slider', icon: Sliders },
-            ].map((tab) => (
+        {/* Section label */}
+        <div className="px-6 pt-6 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/30">Core Management</p>
+        </div>
+
+        {/* Nav Items */}
+        <nav className="flex-1 px-3 space-y-1">
+          {NAV_ITEMS.map(({ id, label, icon }) => (
+            <button
+              key={id}
+              onClick={() => handleTabChange(id)}
+              className={`
+                w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all
+                ${activeTab === id
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/60 hover:text-white hover:bg-white/10'
+                }
+              `}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Logout */}
+        <div className="px-3 pb-6 pt-2 border-t border-white/10 mt-4">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/10 transition-all"
+          >
+            <LogOut size={18} />
+            Log Out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main Content ──────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-4">
+              {/* Mobile menu toggle */}
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-black text-black'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <tab.icon className="w-5 h-5 mr-2" />
-                {tab.name}
+                <Menu size={20} />
               </button>
-            ))}
-          </nav>
-        </div>
 
-        {/* Overview */}
-        {activeTab === 'overview' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-green-100 p-4 rounded">
-                <div className="text-lg font-bold">Total Revenue</div>
-                <div className="text-2xl">{formatINR(analytics?.totalSales ?? totalRevenue)}</div>
-              </div>
-              <div className="bg-blue-100 p-4 rounded">
-                <div className="text-lg font-bold">Total Orders</div>
-                <div className="text-2xl">{analytics?.totalOrders ?? (Array.isArray(orders) ? orders.length : 0)}</div>
-              </div>
-              <div className="bg-purple-100 p-4 rounded">
-                <div className="text-lg font-bold">Total Users</div>
-                <div className="text-2xl">{analytics?.totalUsers ?? users.length}</div>
+              <div>
+                <h1 className="text-base font-bold text-gray-900 uppercase tracking-wide">{title}</h1>
+                <p className="text-xs text-gray-400 uppercase tracking-widest mt-0.5">{subtitle}</p>
               </div>
             </div>
-            <div>
-              <h3 className="font-bold mb-2">Sales by Month</h3>
-              <div className="bg-white p-4 rounded shadow">
-                {analytics?.salesByMonth?.length ? (
-                  <ul className="space-y-1">
-                    {analytics.salesByMonth.map((m: any) => (
-                      <li key={m._id} className="flex justify-between">
-                        <span>{m._id}</span>
-                        <span>{formatINR(m.total)} ({m.count} orders)</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No sales data available.</p>
-                )}
+
+            {/* Admin badge */}
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900">{user?.name || 'Admin'}</p>
+                <p className="text-xs text-gray-400 uppercase tracking-widest">Super Admin</p>
               </div>
-            </div>
-            <div>
-              <h3 className="font-bold mb-2">Recent Orders</h3>
-              {Array.isArray(orders) && token && <OrderTable orders={orders.slice(0, 5)} setOrders={setOrders} token={token} adminMode={false} />}
+              <div className="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                {user?.name ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'A'}
+              </div>
             </div>
           </div>
-        )}
+        </header>
 
-        {/* Orders Tab */}
-        {activeTab === 'orders' && Array.isArray(orders) && token && <OrderTable orders={orders} setOrders={setOrders} token={token} adminMode={true} />}
-
-        {/* Users Tab */}
-        {activeTab === 'users' && Array.isArray(users) && token && <UsersTable users={users} setUsers={setUsers} token={token} />}
-
-        {/* Products Tab */}
-        {activeTab === 'products' && Array.isArray(products) && token && <ProductTable products={products} setProducts={setProducts} token={token} />}
-        
-        {/* Hero Slider Tab */}
-        {activeTab === 'hero-slider' && <AdminHeroSlider />}
+        {/* Page content */}
+        <main className="flex-1 p-6 overflow-auto">
+          {activeTab === 'overview' && (
+            <AdminOverview
+              orders={orders}
+              users={users}
+              products={products}
+              analytics={analytics}
+              onTabChange={handleTabChange}
+            />
+          )}
+          {activeTab === 'orders' && (
+            <AdminOrdersTab orders={orders} setOrders={setOrders} />
+          )}
+          {activeTab === 'users' && (
+            <AdminUsersTab users={users} setUsers={setUsers} />
+          )}
+          {activeTab === 'products' && (
+            <AdminProductsTab products={products} setProducts={setProducts} />
+          )}
+          {activeTab === 'categories' && <AdminCategoriesTab />}
+          {activeTab === 'hero-slider' && <AdminHeroSlider />}
+        </main>
       </div>
     </div>
   );
 };
 
 export default AdminDashboard;
-
-// Inline OrderTable component
-const OrderTable: React.FC<{ orders: any[]; setOrders: (o: any[]) => void; token: string; adminMode: boolean }> = ({ orders, setOrders, token, adminMode }) => {
-  const [editingId, setEditingId] = useState<string>('');
-  const [editStatus, setEditStatus] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleOrderClick = async (orderId: string) => {
-    try {
-      // Fetch detailed order information
-      const response = await api.get(`/api/orders/${orderId}`);
-      setSelectedOrder(response.data);
-      setIsModalOpen(true);
-    } catch (error) {
-      console.error('Failed to fetch order details:', error);
-      // Fallback to using the order from the list
-      const order = orders.find(o => o._id === orderId);
-      if (order) {
-        setSelectedOrder(order);
-        setIsModalOpen(true);
-      }
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedOrder(null);
-  };
-
-  const handleEdit = (order: any) => {
-    setEditingId(order._id);
-    setEditStatus(order.status);
-  };
-  const handleEditSave = async () => {
-    await api.put(`/api/orders/${editingId}/status`, { status: editStatus });
-    setOrders(orders.map(o => (o._id === editingId ? { ...o, status: editStatus } : o)));
-    setEditingId('');
-  };
-  const handleDelete = async (id: string) => {
-    await api.delete(`/api/orders/${id}`);
-    setOrders(orders.filter(o => o._id !== id));
-  };
-  return (
-    <>
-      <table className="min-w-full bg-white border mt-4">
-        <thead>
-          <tr>
-            <th className="px-4 py-2 border">Order ID</th>
-            <th className="px-4 py-2 border">User</th>
-            <th className="px-4 py-2 border">Total</th>
-            <th className="px-4 py-2 border">Status</th>
-            <th className="px-4 py-2 border">Date</th>
-            {adminMode && <th className="px-4 py-2 border">Actions</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map(order => (
-            <tr
-              key={order._id}
-              className="hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => handleOrderClick(order._id)}
-            >
-              <td className="border px-4 py-2">{order._id}</td>
-              <td className="border px-4 py-2">{order.user?.name || 'N/A'}</td>
-              <td className="border px-4 py-2">{formatINR(order.total ?? 0)}</td>
-              <td className="border px-4 py-2">
-                {editingId === order._id ? (
-                  <select
-                    value={editStatus}
-                    onChange={e => setEditStatus(e.target.value)}
-                    className="border px-2 py-1"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                ) : (
-                  order.status
-                )}
-              </td>
-              <td className="border px-4 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
-              {adminMode && (
-                <td className="border px-4 py-2">
-                  {editingId === order._id ? (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEditSave(); }}
-                        className="text-green-600 mr-2"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditingId(''); }}
-                        className="text-gray-600"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEdit(order); }}
-                        className="text-blue-600 mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(order._id); }}
-                        className="text-red-600"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      <OrderDetailsModal
-        order={selectedOrder}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
-    </>
-  );
-};
-// Inline UsersTable component
-const UsersTable: React.FC<{ users: any[]; setUsers: (u: any[]) => void; token: string }> = ({ users, setUsers, token }) => {
-  if (!Array.isArray(users)) return <div>No users data.</div>;
-  const [editingId, setEditingId] = useState<string>('');
-  const [editRole, setEditRole] = useState('user');
-  const handleEdit = (user: any) => {
-    setEditingId(user._id);
-    setEditRole(user.role);
-  };
-  const handleEditSave = async () => {
-    await api.put(`/api/users/${editingId}`, { role: editRole });
-    setUsers(users.map(u => (u._id === editingId ? { ...u, role: editRole } : u)));
-    setEditingId('');
-  };
-  const handleDelete = async (id: string) => {
-    await api.delete(`/api/users/${id}`);
-    setUsers(users.filter(u => u._id !== id));
-  };
-  return (
-    <table className="min-w-full bg-white border mt-4">
-      <thead>
-        <tr>
-          <th className="px-4 py-2 border">Name</th>
-          <th className="px-4 py-2 border">Email</th>
-          <th className="px-4 py-2 border">Role</th>
-          <th className="px-4 py-2 border">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {users.map(user => (
-          <tr key={user._id}>
-            <td className="border px-4 py-2">{user.name}</td>
-            <td className="border px-4 py-2">{user.email}</td>
-            <td className="border px-4 py-2">
-              {editingId === user._id ? (
-                <select value={editRole} onChange={e => setEditRole(e.target.value)} className="border px-2 py-1">
-                  {['user', 'admin'].map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              ) : (
-                user.role
-              )}
-            </td>
-            <td className="border px-4 py-2">
-              {editingId === user._id ? (
-                <>
-                  <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
-                  <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => handleEdit(user)} className="text-blue-600 mr-2">Edit</button>
-                  <button onClick={() => handleDelete(user._id)} className="text-red-600">Delete</button>
-                </>
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-};
-
-// ProductTable component
-const ProductTable: React.FC<{ products: any[]; setProducts: (p: any[]) => void; token: string }> = ({ products, setProducts, token }) => {
-  if (!Array.isArray(products)) return <div>No products data.</div>;
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-  const [newProduct, setNewProduct] = useState<any>({ 
-    name: '', 
-    price: '', 
-    stock: '', 
-    category: '', 
-    description: '', 
-    images: [''],
-    sizes: [],
-    colors: [],
-    featured: false,
-    new: false
-  });
-  const handleEdit = (product: any) => {
-    setEditingId(product._id);
-    setEditForm({ 
-      ...product, 
-      images: product.images || [''],
-      sizes: Array.isArray(product.sizes) ? product.sizes : 
-             typeof product.sizes === 'string' ? product.sizes.split(',').map(s => s.trim()) : [],
-      colors: Array.isArray(product.colors) ? product.colors : 
-              typeof product.colors === 'string' ? product.colors.split(',').map(c => c.trim()) : []
-    });
-  };
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
-  };
-  const handleImageChange = (index: number, value: string, isEdit: boolean = false) => {
-    if (isEdit) {
-      const newImages = [...(editForm.images || [''])];
-      newImages[index] = value;
-      setEditForm({ ...editForm, images: newImages });
-    } else {
-      const newImages = [...(newProduct.images || [''])];
-      newImages[index] = value;
-      setNewProduct({ ...newProduct, images: newImages });
-    }
-  };
-  const addImageField = (isEdit: boolean = false) => {
-    if (isEdit) {
-      setEditForm({ ...editForm, images: [...(editForm.images || ['']), ''] });
-    } else {
-      setNewProduct({ ...newProduct, images: [...(newProduct.images || ['']), ''] });
-    }
-  };
-  const removeImageField = (index: number, isEdit: boolean = false) => {
-    if (isEdit) {
-      const newImages = editForm.images.filter((_: any, i: number) => i !== index);
-      setEditForm({ ...editForm, images: newImages.length ? newImages : [''] });
-    } else {
-      const newImages = newProduct.images.filter((_: any, i: number) => i !== index);
-      setNewProduct({ ...newProduct, images: newImages.length ? newImages : [''] });
-    }
-  };
-  const handleEditSave = async () => {
-    const updateData = {
-      ...editForm,
-      sizes: editForm.sizes.length > 0 ? editForm.sizes.join(',') : '',
-      colors: editForm.colors.length > 0 ? editForm.colors.join(',') : '',
-      price: parseFloat(editForm.price) || 0,
-      stock: parseInt(editForm.stock) || 0
-    };
-    await api.put(`/api/products/${editingId}`, updateData);
-    setProducts(products.map(p => (p._id === editingId ? { ...p, ...updateData } : p)));
-    setEditingId(null);
-  };
-  const handleDelete = async (id: string) => {
-    await api.delete(`/api/products/${id}`);
-    setProducts(products.filter(p => p._id !== id));
-  };
-  const handleNewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewProduct({ ...newProduct, [e.target.name]: e.target.value });
-  };
-  // Handle size/color changes
-  const handleSizeChange = (sizes: string[], isEdit: boolean = false) => {
-    if (isEdit) {
-      setEditForm({ ...editForm, sizes });
-    } else {
-      setNewProduct({ ...newProduct, sizes });
-    }
-  };
-
-  const handleColorChange = (colors: string[], isEdit: boolean = false) => {
-    if (isEdit) {
-      setEditForm({ ...editForm, colors });
-    } else {
-      setNewProduct({ ...newProduct, colors });
-    }
-  };
-
-  const handleAdd = async () => {
-    const productData = {
-      ...newProduct,
-      images: newProduct.images.filter((img: string) => img.trim() !== ''),
-      sizes: newProduct.sizes.length > 0 ? newProduct.sizes.join(',') : '',
-      colors: newProduct.colors.length > 0 ? newProduct.colors.join(',') : '',
-      price: parseFloat(newProduct.price) || 0,
-      stock: parseInt(newProduct.stock) || 0
-    };
-    const res = await api.post('/api/products', productData);
-    setProducts([...products, res.data]);
-    setNewProduct({ 
-      name: '', 
-      price: '', 
-      stock: '', 
-      category: '', 
-      description: '', 
-      images: [''],
-      sizes: [],
-      colors: [],
-      featured: false,
-      new: false
-    });
-  };
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Products</h2>
-      <table className="min-w-full bg-white border">
-        <thead>
-          <tr>
-            <th className="px-4 py-2 border">Image</th>
-            <th className="px-4 py-2 border">Name</th>
-            <th className="px-4 py-2 border">Price</th>
-            <th className="px-4 py-2 border">Stock</th>
-            <th className="px-4 py-2 border">Category</th>
-            <th className="px-4 py-2 border">Sizes</th>
-            <th className="px-4 py-2 border">Colors</th>
-            <th className="px-4 py-2 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map(product => (
-            <tr key={product._id}>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <div className="space-y-2">
-                    {(editForm.images || ['']).map((img: string, index: number) => (
-                      <div key={index} className="flex flex-col gap-1">
-                        <ImageUploader
-                          value={img}
-                          onChange={(url) => handleImageChange(index, url, true)}
-                          folder='/duodude/products'
-                          placeholder='Image URL'
-                        />
-                        {editForm.images.length > 1 && (
-                          <button
-                            onClick={() => removeImageField(index, true)}
-                            className="text-red-500 text-xs self-start"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => addImageField(true)}
-                      className="text-blue-500 text-xs"
-                    >
-                      + Add Image
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {product.images && product.images.length > 0 ? (
-                      product.images.slice(0, 2).map((img: string, index: number) => (
-                        <img
-                          key={index}
-                          src={img}
-                          alt={product.name}
-                          className="w-12 h-12 object-center rounded"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YzZjRmNiIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
-                          }}
-                        />
-                      ))
-                    ) : (product as any).image ? (
-                      <img
-                        src={(product as any).image}
-                        alt={product.name}
-                        className="w-12 h-12 object-center rounded"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YzZjRmNiIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs">
-                        No Image
-                      </div>
-                    )}
-                    {product.images && product.images.length > 2 && (
-                      <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xs">
-                        +{product.images.length - 2}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <input name="name" value={editForm.name} onChange={handleEditChange} className="border px-2 py-1" />
-                ) : (
-                  product.name
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <input name="price" value={editForm.price} onChange={handleEditChange} className="border px-2 py-1" />
-                ) : (
-                  product.price
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <input name="stock" value={editForm.stock} onChange={handleEditChange} className="border px-2 py-1" />
-                ) : (
-                  product.stock
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <input name="category" value={editForm.category} onChange={handleEditChange} className="border px-2 py-1" />
-                ) : (
-                  product.category
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <SizeSelector 
-                    selectedSizes={editForm.sizes || []} 
-                    onChange={(sizes) => handleSizeChange(sizes, true)} 
-                  />
-                ) : (
-                  <div className="text-xs">
-                    {Array.isArray(product.sizes) 
-                      ? product.sizes.join(', ') 
-                      : typeof product.sizes === 'string' && product.sizes 
-                      ? product.sizes 
-                      : 'No sizes'}
-                  </div>
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <ColorSelector 
-                    selectedColors={editForm.colors || []} 
-                    onChange={(colors) => handleColorChange(colors, true)} 
-                  />
-                ) : (
-                  <div className="text-xs">
-                    {Array.isArray(product.colors) 
-                      ? product.colors.join(', ') 
-                      : typeof product.colors === 'string' && product.colors 
-                      ? product.colors 
-                      : 'No colors'}
-                  </div>
-                )}
-              </td>
-              <td className="border px-4 py-2">
-                {editingId === product._id ? (
-                  <>
-                    <button onClick={handleEditSave} className="text-green-600 mr-2">Save</button>
-                    <button onClick={() => setEditingId('')} className="text-gray-600">Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleEdit(product)} className="text-blue-600 mr-2">Edit</button>
-                    <button onClick={() => handleDelete(product._id)} className="text-red-600">Delete</button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-          <tr>
-            <td className="border px-4 py-2">
-              <div className="space-y-2">
-                {(newProduct.images || ['']).map((img: string, index: number) => (
-                  <div key={index} className="flex flex-col gap-1">
-                    <ImageUploader
-                      value={img}
-                      onChange={(url) => handleImageChange(index, url, false)}
-                      folder='/duodude/products'
-                      placeholder='Image URL'
-                    />
-                    {newProduct.images.length > 1 && (
-                      <button
-                        onClick={() => removeImageField(index, false)}
-                        className="text-red-500 text-xs self-start"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={() => addImageField(false)}
-                  className="text-blue-500 text-xs"
-                >
-                  + Add Image
-                </button>
-              </div>
-            </td>
-            <td className="border px-4 py-2">
-              <input name="name" value={newProduct.name} onChange={handleNewChange} className="border px-2 py-1" placeholder="Name" />
-            </td>
-            <td className="border px-4 py-2">
-              <input name="price" value={newProduct.price} onChange={handleNewChange} className="border px-2 py-1" placeholder="Price" />
-            </td>
-            <td className="border px-4 py-2">
-              <input name="stock" value={newProduct.stock} onChange={handleNewChange} className="border px-2 py-1" placeholder="Stock" />
-            </td>
-            <td className="border px-4 py-2">
-              <input name="category" value={newProduct.category} onChange={handleNewChange} className="border px-2 py-1" placeholder="Category" />
-            </td>
-            <td className="border px-4 py-2">
-              <SizeSelector 
-                selectedSizes={newProduct.sizes || []} 
-                onChange={(sizes) => handleSizeChange(sizes, false)} 
-              />
-            </td>
-            <td className="border px-4 py-2">
-              <ColorSelector 
-                selectedColors={newProduct.colors || []} 
-                onChange={(colors) => handleColorChange(colors, false)} 
-              />
-            </td>
-            <td className="border px-4 py-2">
-              <button onClick={handleAdd} className="text-green-600">Add</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-// Size Selector Component
-const SizeSelector: React.FC<{ selectedSizes: string[]; onChange: (sizes: string[]) => void }> = ({ selectedSizes, onChange }) => {
-  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '28', '30', '32', '34', '36', '38', '40', '42'];
-
-  const toggleSize = (size: string) => {
-    if (selectedSizes.includes(size)) {
-      onChange(selectedSizes.filter(s => s !== size));
-    } else {
-      onChange([...selectedSizes, size]);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1">
-        {availableSizes.map(size => (
-          <button
-            key={size}
-            type="button"
-            onClick={() => toggleSize(size)}
-            className={`px-2 py-1 text-xs border rounded ${
-              selectedSizes.includes(size)
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            {size}
-          </button>
-        ))}
-      </div>
-      {selectedSizes.length > 0 && (
-        <div className="text-xs text-gray-600">
-          Selected: {selectedSizes.join(', ')}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Color Selector Component
-const ColorSelector: React.FC<{ selectedColors: string[]; onChange: (colors: string[]) => void }> = ({ selectedColors, onChange }) => {
-  const availableColors = [
-    { name: 'Black', value: 'black' },
-    { name: 'White', value: 'white' },
-    { name: 'Red', value: 'red' },
-    { name: 'Blue', value: 'blue' },
-    { name: 'Green', value: 'green' },
-    { name: 'Yellow', value: 'yellow' },
-    { name: 'Purple', value: 'purple' },
-    { name: 'Pink', value: 'pink' },
-    { name: 'Orange', value: 'orange' },
-    { name: 'Brown', value: 'brown' },
-    { name: 'Gray', value: 'gray' },
-    { name: 'Navy', value: 'navy' }
-  ];
-
-  const getColorDisplay = (color: string) => {
-    const colorMap: { [key: string]: string } = {
-      'black': '#000000',
-      'white': '#FFFFFF',
-      'red': '#EF4444',
-      'blue': '#3B82F6',
-      'green': '#22C55E',
-      'yellow': '#EAB308',
-      'purple': '#8B5CF6',
-      'pink': '#EC4899',
-      'orange': '#F97316',
-      'brown': '#8B4513',
-      'gray': '#6B7280',
-      'navy': '#1E3A8A'
-    };
-    return colorMap[color] || color;
-  };
-
-  const toggleColor = (color: string) => {
-    if (selectedColors.includes(color)) {
-      onChange(selectedColors.filter(c => c !== color));
-    } else {
-      onChange([...selectedColors, color]);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1">
-        {availableColors.map(({ name, value }) => {
-          const isSelected = selectedColors.includes(value);
-          const colorHex = getColorDisplay(value);
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggleColor(value)}
-              className={`w-6 h-6 rounded-full border-2 transition-all ${
-                isSelected
-                  ? 'border-gray-800 scale-110 shadow-md'
-                  : 'border-gray-300 hover:border-gray-500'
-              }`}
-              style={{
-                backgroundColor: colorHex,
-                border: value === 'white' ? '2px solid #e5e7eb' : undefined
-              }}
-              title={name}
-            >
-              {isSelected && (
-                <div className="w-full h-full rounded-full flex items-center justify-center">
-                  <div className={`w-2 h-2 rounded-full ${
-                    value === 'white' || value === 'yellow'
-                      ? 'bg-gray-800'
-                      : 'bg-white'
-                  }`} />
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-      {selectedColors.length > 0 && (
-        <div className="text-xs text-gray-600">
-          Selected: {selectedColors.join(', ')}
-        </div>
-      )}
-    </div>
-  );
-};
