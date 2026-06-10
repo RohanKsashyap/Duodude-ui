@@ -186,7 +186,7 @@ const Navbar: React.FC = () => {
             {navCategories.map(({ parent, children }) => (
               <div
                 key={parent._id}
-                className="relative"
+                className="relative capitalize"
                 onMouseEnter={() => handleMouseEnter(parent.name)}
                 onMouseLeave={handleMouseLeave}
               >
