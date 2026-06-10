@@ -4,6 +4,7 @@ import { ShoppingBag, Menu, X, Search, User, LogOut, Settings, Package, MapPin, 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../config/axios';
+import { useCategories } from '../hooks/useCategories';
 
 interface Product {
   _id: string;
@@ -14,79 +15,8 @@ interface Product {
   category?: string;
 }
 
-interface SubCategory {
-  label: string;
-  value: string;
-}
-
-interface NavCategory {
-  label: string;
-  href: string;
-  subCategories: SubCategory[];
-}
-
 const NO_IMAGE =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2QxZDVkYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIGltYWdlPC90ZXh0Pjwvc3ZnPg==';
-
-// Nav categories with sub-categories
-const NAV_CATEGORIES: NavCategory[] = [
-  {
-    label: 'Men',
-    href: '/products?category=men',
-    subCategories: [
-      { label: 'New Arrivals', value: 'men-new' },
-      { label: 'T-Shirts', value: 'men-tshirts' },
-      { label: 'Shirts', value: 'men-shirts' },
-      { label: 'Jeans', value: 'men-jeans' },
-      { label: 'Trousers', value: 'men-trousers' },
-      { label: 'Jackets & Coats', value: 'men-jackets' },
-      { label: 'Activewear', value: 'men-activewear' },
-      { label: 'Footwear', value: 'men-footwear' },
-      { label: 'Accessories', value: 'men-accessories' },
-      { label: 'Sale', value: 'men-sale' },
-    ],
-  },
-  {
-    label: 'Women',
-    href: '/products?category=women',
-    subCategories: [
-      { label: 'New Arrivals', value: 'women-new' },
-      { label: 'Dresses', value: 'women-dresses' },
-      { label: 'Tops & Blouses', value: 'women-tops' },
-      { label: 'Jeans', value: 'women-jeans' },
-      { label: 'Trousers', value: 'women-trousers' },
-      { label: 'Skirts', value: 'women-skirts' },
-      { label: 'Jackets & Coats', value: 'women-jackets' },
-      { label: 'Activewear', value: 'women-activewear' },
-      { label: 'Footwear', value: 'women-footwear' },
-      { label: 'Sale', value: 'women-sale' },
-    ],
-  },
-  {
-    label: 'Accessories',
-    href: '/products?category=accessories',
-    subCategories: [
-      { label: 'Bags & Wallets', value: 'acc-bags' },
-      { label: 'Belts', value: 'acc-belts' },
-      { label: 'Caps & Hats', value: 'acc-caps' },
-      { label: 'Sunglasses', value: 'acc-sunglasses' },
-      { label: 'Watches', value: 'acc-watches' },
-      { label: 'Jewellery', value: 'acc-jewellery' },
-      { label: 'Scarves', value: 'acc-scarves' },
-      { label: 'Socks', value: 'acc-socks' },
-    ],
-  },
-  {
-    label: 'New Arrivals',
-    href: '/products?category=new',
-    subCategories: [
-      { label: 'New This Week', value: 'new-week' },
-      { label: 'Trending Now', value: 'new-trending' },
-      { label: 'Best Sellers', value: 'new-bestsellers' },
-      { label: 'Limited Edition', value: 'new-limited' },
-    ],
-  },
-];
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -94,6 +24,8 @@ const Navbar: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>(null);
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { grouped: navCategories } = useCategories();
 
   // Search state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -251,58 +183,59 @@ const Navbar: React.FC = () => {
               Home
             </Link>
 
-            {NAV_CATEGORIES.map((cat) => (
+            {navCategories.map(({ parent, children }) => (
               <div
-                key={cat.label}
+                key={parent._id}
                 className="relative"
-                onMouseEnter={() => handleMouseEnter(cat.label)}
+                onMouseEnter={() => handleMouseEnter(parent.name)}
                 onMouseLeave={handleMouseLeave}
               >
                 {/* Category trigger */}
                 <Link
-                  to={cat.href}
+                  to={`/products?category=${encodeURIComponent(parent.slug)}`}
                   className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
-                    activeDropdown === cat.label
+                    activeDropdown === parent.name
                       ? 'text-black border-b-2 border-black'
                       : 'text-gray-700 hover:text-gray-900'
                   }`}
                 >
-                  {cat.label}
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform duration-200 ${
-                      activeDropdown === cat.label ? 'rotate-180' : ''
-                    }`}
-                  />
+                  {parent.name}
+                  {children.length > 0 && (
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-200 ${
+                        activeDropdown === parent.name ? 'rotate-180' : ''
+                      }`}
+                    />
+                  )}
                 </Link>
 
                 {/* Mega dropdown panel */}
-                {activeDropdown === cat.label && (
+                {activeDropdown === parent.name && children.length > 0 && (
                   <div
                     className="absolute left-1/2 -translate-x-1/2 top-full mt-0 w-56 bg-white shadow-xl border-t-2 border-black z-50"
-                    onMouseEnter={() => handleMouseEnter(cat.label)}
+                    onMouseEnter={() => handleMouseEnter(parent.name)}
                     onMouseLeave={handleMouseLeave}
                   >
                     <ul className="py-3">
-                      {/* Link to browse all in this category */}
                       <li>
                         <Link
-                          to={cat.href}
+                          to={`/products?category=${encodeURIComponent(parent.slug)}`}
                           className="block px-5 py-2 text-xs font-bold uppercase tracking-widest text-gray-900 hover:bg-gray-50"
                           onClick={() => setActiveDropdown(null)}
                         >
-                          View All {cat.label}
+                          View All {parent.name}
                         </Link>
                       </li>
                       <li className="border-t border-gray-100 my-1" />
-                      {cat.subCategories.map((sub) => (
-                        <li key={sub.value}>
+                      {children.map((sub) => (
+                        <li key={sub._id}>
                           <Link
-                            to={`/products?category=${encodeURIComponent(sub.value)}`}
+                            to={`/products?category=${encodeURIComponent(sub.slug)}`}
                             className="block px-5 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors"
                             onClick={() => setActiveDropdown(null)}
                           >
-                            {sub.label}
+                            {sub.name}
                           </Link>
                         </li>
                       ))}
@@ -566,42 +499,44 @@ const Navbar: React.FC = () => {
             </Link>
 
             {/* Category links with accordion sub-categories */}
-            {NAV_CATEGORIES.map((cat) => (
-              <div key={cat.label}>
+            {navCategories.map(({ parent, children }) => (
+              <div key={parent._id}>
                 <button
                   className="w-full flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900"
                   onClick={() =>
                     setExpandedMobileCategory(
-                      expandedMobileCategory === cat.label ? null : cat.label
+                      expandedMobileCategory === parent.name ? null : parent.name
                     )
                   }
                 >
-                  <span>{cat.label}</span>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform duration-200 ${
-                      expandedMobileCategory === cat.label ? 'rotate-180' : ''
-                    }`}
-                  />
+                  <span>{parent.name}</span>
+                  {children.length > 0 && (
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform duration-200 ${
+                        expandedMobileCategory === parent.name ? 'rotate-180' : ''
+                      }`}
+                    />
+                  )}
                 </button>
 
-                {expandedMobileCategory === cat.label && (
+                {expandedMobileCategory === parent.name && children.length > 0 && (
                   <div className="bg-gray-50 border-l-2 border-black ml-3 pl-3 pb-1">
                     <Link
-                      to={cat.href}
+                      to={`/products?category=${encodeURIComponent(parent.slug)}`}
                       className="block py-2 text-sm font-semibold text-gray-900"
                       onClick={() => { setIsMenuOpen(false); setExpandedMobileCategory(null); }}
                     >
-                      View All {cat.label}
+                      View All {parent.name}
                     </Link>
-                    {cat.subCategories.map((sub) => (
+                    {children.map((sub) => (
                       <Link
-                        key={sub.value}
-                        to={`/products?category=${encodeURIComponent(sub.value)}`}
+                        key={sub._id}
+                        to={`/products?category=${encodeURIComponent(sub.slug)}`}
                         className="block py-1.5 text-sm text-gray-600 hover:text-black"
                         onClick={() => { setIsMenuOpen(false); setExpandedMobileCategory(null); }}
                       >
-                        {sub.label}
+                        {sub.name}
                       </Link>
                     ))}
                   </div>
