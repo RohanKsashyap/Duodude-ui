@@ -153,6 +153,24 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
+      {/* ── Announcement marquee ── */}
+      <div className="bg-black text-white text-xs py-1.5 overflow-hidden">
+        <div className="flex animate-marquee whitespace-nowrap">
+          {[...Array(4)].map((_, i) => (
+            <span key={i} className="flex items-center gap-8 px-8">
+              <span>🚚 Free Delivery on orders above ₹2000</span>
+              <span>•</span>
+              <span>✨ New arrivals every week</span>
+              <span>•</span>
+              <span>🎉 Use code DUODUDE10 for 10% off your first order</span>
+              <span>•</span>
+              <span>🚚 Free Delivery on orders above ₹2000</span>
+              <span>•</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
 

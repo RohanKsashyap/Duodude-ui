@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LayoutDashboard, ShoppingBag, Users, Package, Sliders, LogOut, Menu, X, Tag,
+  LayoutDashboard, ShoppingBag, Users, Package, Sliders, LogOut, Menu, X, Tag, RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -12,25 +12,28 @@ import AdminUsersTab from './admin/AdminUsersTab';
 import AdminProductsTab from './admin/AdminProductsTab';
 import AdminHeroSlider from './AdminHeroSlider';
 import AdminCategoriesTab from './admin/AdminCategoriesTab';
+import AdminReturnsTab from './admin/AdminReturnsTab';
 
-type Tab = 'overview' | 'orders' | 'users' | 'products' | 'hero-slider' | 'categories';
+type Tab = 'overview' | 'orders' | 'users' | 'products' | 'hero-slider' | 'categories' | 'returns';
 
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-  { id: 'products', label: 'Products', icon: <Package size={18} /> },
-  { id: 'categories', label: 'Categories', icon: <Tag size={18} /> },
-  { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} /> },
-  { id: 'users', label: 'Customers', icon: <Users size={18} /> },
+  { id: 'overview',    label: 'Dashboard',   icon: <LayoutDashboard size={18} /> },
+  { id: 'products',    label: 'Products',    icon: <Package size={18} /> },
+  { id: 'categories',  label: 'Categories',  icon: <Tag size={18} /> },
+  { id: 'orders',      label: 'Orders',      icon: <ShoppingBag size={18} /> },
+  { id: 'returns',     label: 'Returns',     icon: <RotateCcw size={18} /> },
+  { id: 'users',       label: 'Customers',   icon: <Users size={18} /> },
   { id: 'hero-slider', label: 'Hero Slider', icon: <Sliders size={18} /> },
 ];
 
 const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
-  overview: { title: 'Dashboard', subtitle: 'Welcome back, Admin' },
-  orders: { title: 'Orders', subtitle: 'Manage customer orders' },
-  users: { title: 'Customers', subtitle: 'View and manage users' },
-  products: { title: 'Products', subtitle: 'Manage your catalog' },
-  categories: { title: 'Categories', subtitle: 'Manage product categories' },
-  'hero-slider': { title: 'Hero Slider', subtitle: 'Edit homepage slides' },
+  overview:     { title: 'Dashboard',       subtitle: 'Welcome back, Admin' },
+  orders:       { title: 'Orders',          subtitle: 'Manage customer orders' },
+  users:        { title: 'Customers',       subtitle: 'View and manage users' },
+  products:     { title: 'Products',        subtitle: 'Manage your catalog' },
+  categories:   { title: 'Categories',      subtitle: 'Manage product categories' },
+  'hero-slider':{ title: 'Hero Slider',     subtitle: 'Edit homepage slides' },
+  returns:      { title: 'Return Management', subtitle: 'Review and action return requests' },
 };
 
 const AdminDashboard: React.FC = () => {
@@ -218,6 +221,7 @@ const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'categories' && <AdminCategoriesTab />}
           {activeTab === 'hero-slider' && <AdminHeroSlider />}
+          {activeTab === 'returns' && <AdminReturnsTab />}
         </main>
       </div>
     </div>

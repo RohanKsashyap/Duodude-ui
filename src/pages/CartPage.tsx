@@ -68,17 +68,17 @@ const CartPage: React.FC = () => {
   }, []);
 
   // Update item quantity in the cart
-  const updateQuantity = (productId: string, qty: number) => {
+  const updateQuantity = (productId: string, size: string | undefined, qty: number) => {
     if (qty < 1) return;
 
     if (isAuthenticated) {
       fetch(`${baseurl}/api/cart/${productId}/quantity`, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ quantity: qty }),
+        body: JSON.stringify({ quantity: qty, size }),
       })
         .then((res) => {
           if (!res.ok) throw new Error('Failed to update quantity');
@@ -89,7 +89,7 @@ const CartPage: React.FC = () => {
     } else {
       // Handle guest users - update localStorage
       const updatedItems = cartItems.map(item => 
-        (item.product._id || item.product.id) === productId 
+        (item.product._id || item.product.id) === productId && item.size === size
           ? { ...item, quantity: qty }
           : item
       );
@@ -99,13 +99,15 @@ const CartPage: React.FC = () => {
   };
 
   // Remove an item from the cart
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = (productId: string, size: string | undefined) => {
     if (isAuthenticated) {
-      fetch(`${baseurl}/api/cart/${productId}`, { 
+      fetch(`${baseurl}/api/cart/remove`, { 
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        },
+        body: JSON.stringify({ productId, size }),
       })
         .then((res) => {
           if (!res.ok) throw new Error('Failed to remove item');
@@ -116,7 +118,7 @@ const CartPage: React.FC = () => {
     } else {
       // Handle guest users - remove from localStorage
       const updatedItems = cartItems.filter(item => 
-        (item.product._id || item.product.id) !== productId
+        !((item.product._id || item.product.id) === productId && item.size === size)
       );
       setCartItems(updatedItems);
       localStorage.setItem('cart', JSON.stringify(updatedItems));
@@ -126,7 +128,7 @@ const CartPage: React.FC = () => {
   // Clear the entire cart
   const clearCart = () => {
     if (isAuthenticated) {
-      fetch(`${baseurl}/api/cart`, { 
+      fetch(`${baseurl}/api/cart/clear`, { 
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -217,7 +219,7 @@ const CartPage: React.FC = () => {
                     <div className="mt-4 flex-1 flex items-end justify-between">
                       <div className="flex items-center border border-gray-200 rounded">
                         <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.product._id, item.size, item.quantity - 1)}
                           className="p-2 text-gray-500 hover:text-gray-600"
                         >
                           {/* minus icon */}
@@ -228,7 +230,7 @@ const CartPage: React.FC = () => {
                         </button>
                         <span className="px-4 text-gray-900">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.product._id, item.size, item.quantity + 1)}
                           className="p-2 text-gray-500 hover:text-gray-600"
                         >
                           {/* plus icon */}
@@ -239,7 +241,7 @@ const CartPage: React.FC = () => {
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.product._id)}
+                        onClick={() => removeFromCart(item.product._id, item.size)}
                         className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-800 flex items-center"
                       >
                         <Trash2 size={16} className="mr-1" />

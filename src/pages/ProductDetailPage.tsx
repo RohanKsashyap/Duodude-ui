@@ -482,14 +482,14 @@ const ProductDetailPage: React.FC = () => {
                   <Truck className="w-5 h-5 text-gray-600" />
                   <span className="text-sm text-gray-600">Free shipping on orders over ₹2000</span>
                 </div>
-                <div className="flex items-center space-x-3">
+                {/* <div className="flex items-center space-x-3">
                   <RotateCcw className="w-5 h-5 text-gray-600" />
                   <span className="text-sm text-gray-600">30-day return policy</span>
-                </div>
-                <div className="flex items-center space-x-3">
+                </div> */}
+                {/* <div className="flex items-center space-x-3">
                   <Shield className="w-5 h-5 text-gray-600" />
                   <span className="text-sm text-gray-600">2-year warranty included</span>
-                </div>
+                </div> */}
               </div>
             </div>
 

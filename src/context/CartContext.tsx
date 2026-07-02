@@ -133,18 +133,60 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const removeFromCart = (productId: string | number) => {
-    setCartItems(prev => prev.filter(item => (item.product._id || item.product.id) !== productId));
+  const removeFromCart = async (productId: string | number) => {
+    if (isAuthenticated) {
+      try {
+        // Find the item so we can send its size in the request body
+        const item = cartItems.find(i => (i.product._id || i.product.id) === productId);
+        await api.delete('/api/cart/remove', {
+          data: { productId, size: item?.size },
+        });
+        const res = await api.get('/api/cart');
+        setCartItems(
+          res.data.items.map((i: any) => ({
+            product: i.product,
+            quantity: i.quantity,
+            size: i.size,
+          }))
+        );
+      } catch (err) {
+        console.error('Error removing from cart in DB:', err);
+      }
+    } else {
+      setCartItems(prev => prev.filter(item => (item.product._id || item.product.id) !== productId));
+    }
   };
 
-  const updateQuantity = (productId: string | number, quantity: number) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        (item.product._id || item.product.id) === productId
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item
-      )
-    );
+  const updateQuantity = async (productId: string | number, quantity: number) => {
+    if (quantity < 1) return;
+
+    if (isAuthenticated) {
+      try {
+        const item = cartItems.find(i => (i.product._id || i.product.id) === productId);
+        await api.put(`/api/cart/${productId}/quantity`, {
+          quantity,
+          size: item?.size,
+        });
+        const res = await api.get('/api/cart');
+        setCartItems(
+          res.data.items.map((i: any) => ({
+            product: i.product,
+            quantity: i.quantity,
+            size: i.size,
+          }))
+        );
+      } catch (err) {
+        console.error('Error updating quantity in DB:', err);
+      }
+    } else {
+      setCartItems(prev =>
+        prev.map(item =>
+          (item.product._id || item.product.id) === productId
+            ? { ...item, quantity: Math.max(1, quantity) }
+            : item
+        )
+      );
+    }
   };
 
   const clearCart = async () => {
